@@ -22,6 +22,9 @@ This is a **work-hours project**. Build at the office. QA study evenings and job
 | `CampusSeeder` | 16 rows (12 institutes + UIO/ACE/CPS + TBD), idempotent `updateOrInsert`. |
 | composer scripts | `composer setup` / `composer dev` / `composer test` wired. |
 
+### ✅ Verified facts (checked on the actual repo, 19 Aug 2026 — do not re-verify, do not question)
+- **`laravel/pao` is real and behaves as documented.** `composer.lock` pins `laravel/pao v1.1.4` from `github.com/laravel/pao`; Packagist describes it as *"Agent-optimized output for PHP testing tools"*, authored by Taylor Otwell, and it depends on `laravel/agent-detector` — that dependency is exactly why it detects an AI agent and switches `php artisan test` to compact JSON. Versions before April 2026 may not show it; this project's lockfile is authoritative. **Statement is verified fact, not an assumption.**
+
 ### ❌ Not done / gaps (the build work)
 | Gap | Detail |
 |---|---|
@@ -163,7 +166,8 @@ Required changes (when Amir approves this plan and hands it to the senior dev):
   their business-rule comments, enums stay plain strings for now.
 - If you run `php artisan test` or `composer test`, laravel/pao outputs compact
   JSON when it detects an AI agent — parse the JSON result field; do not re-run
-  expecting pretty output.
+  expecting pretty output. (This is already verified — see the "Verified facts"
+  section of the plan file. Do not spend effort re-verifying it.)
 
 Do not change:
 - Any migration file or seeded data (campus_id stays NOT NULL; TBD campus stays;
