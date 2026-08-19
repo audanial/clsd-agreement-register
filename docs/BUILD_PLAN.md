@@ -67,12 +67,13 @@ This is a **work-hours project**. Build at the office. QA study evenings and job
   - `AgreementForm` — create + edit (field spec in §3 below).
   - `AgreementShow` — detail view + status change + activity feed (read from `agreement_activities`).
 - [ ] Status change flow writes an `AgreementActivity` row (`status_changed` type, `meta` JSON with from→to) — the audit trail Legal needs.
+- [ ] **Stale-status flag (DECIDED — Decision 4):** badge on list/detail when `project_status_updated_at` is older than the threshold (>90 days, Ms. Haniza to confirm). Surface the lag; don't hide it.
 - [ ] Validation rules (field spec below), failures shown inline.
 - [ ] Boot to a page where a `legal` user can register an agreement end-to-end.
 
 ### M4 — Tests that protect the business rule (QA portfolio evidence)
 - [ ] **Role-visibility test: viewer cannot see `pending` agreements; legal can.** (This test is the port of the rule.)
-- [ ] Create/update/status-change feature tests with factories (`AgreementFactory`, `PartnerFactory` — add `role` to `UserFactory` states).
+- [ ] Create/update/status-change feature tests with factories (`AgreementFactory`, `PartnerFactory` — add `role` to `UserFactory` states). **Add `HasFactory` to `Agreement`/`Partner` only here, alongside their factories (Kimi convention).**
 - [ ] Validation failure tests.
 - [ ] `composer test` fully green.
 
@@ -108,13 +109,15 @@ File upload UI · dashboard analytics · archive/restore UX · notifications/rem
 
 ---
 
-## 4. Open decisions — Claude proposes, **Amir decides**
+## 4. Open decisions — status as of Amir's review (19 Aug 2026)
 
-1. **Auth approach:** (a) Laravel Breeze with Livewire/Volt stack — standard, fast, but pulls in profile/registration surface you must strip; (b) minimal custom auth (login route + session + role middleware) — fewer moving parts, admin-only user creation via artisan/tinker. *My lean: (b) for an internal tool; let Claude cost it out.*
-2. **Who may create agreements?** *My lean: legal + admin create/edit; viewer strictly read-only.* Confirm.
+1. **Auth approach — ✅ DECIDED: (b) minimal custom auth.** No Breeze. Login form + Laravel `auth` middleware + logout; `admin` creates users via an artisan command (`php artisan make:command` → `user:create`). Contract: use built-in `Auth` facade, never hand-rolled credentials; apply `throttle` rate-limiting on the login form. Do NOT plan around Breeze/registration/email-verification.
+2. **Who may create agreements?** *My lean: legal + admin create/edit; viewer strictly read-only.* Confirm with Claude.
 3. **Date validation strictness** on historical data (hard rule vs warning).
-4. **PIC project-status edits:** PICs may not log in on day one (migration comment says so). Does Legal update project status on their behalf, or do we build PIC logins in phase 2? *My lean: Legal updates on behalf; no PIC logins until asked.*
+4. **PIC project-status edits — ✅ DECIDED with visible-risk acceptance.** MVP: Legal updates project status on behalf — BUT the stale-status flag becomes part of the MVP (see M3): badge when `project_status_updated_at` is older than a threshold (>90 days, Ms. Haniza to confirm). Accepted risk: status can lag; the system surfaces it instead of hiding it. Phase 2 only if requested: lightweight PIC accounts with project-status-edit-only scope.
 5. **File uploads in MVP:** try to include or defer to phase 2? *My lean: defer — the spreadsheet workflow still owns files for now.*
+
+**Convention (agreed earlier with Kimi):** do NOT add `HasFactory` to a model until its factory actually exists. `Agreement`/`Partner` get `HasFactory` only in M4 alongside their factories — not before.
 
 ---
 
@@ -149,8 +152,10 @@ Task:
 5. List the exact files you would create or modify for M1+M2 (paths, one per
    line), and the exact tests you would write, including the role-visibility
    test (viewer must never see document_status=pending; legal must).
-6. Answer Open Decisions 2, 3, 4, 5 from the plan with a one-line
-   recommendation each.
+6. Open Decisions 2, 3 and 5 from the plan are still open — answer each with a
+   one-line recommendation. Open Decisions 1 and 4 are ALREADY DECIDED in the
+   plan file: plan around minimal custom auth (no Breeze, no registration) and
+   the stale-status flag in the MVP. Do not reopen them.
 
 Required changes (when Amir approves this plan and hands it to the senior dev):
 - Follow the repo conventions: PHP 8 attribute config (#[Fillable], #[Hidden]),
