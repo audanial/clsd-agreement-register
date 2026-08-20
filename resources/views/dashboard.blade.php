@@ -1,0 +1,23 @@
+@extends('layouts.app')
+
+@section('title', 'Dashboard')
+
+@section('content')
+    <div class="p-8">
+        <div class="mx-auto max-w-4xl rounded-lg bg-white p-6 shadow">
+            <h1 class="text-2xl font-semibold">Dashboard</h1>
+
+            <p class="mt-4">
+                Signed in as <strong>{{ auth()->user()->name }}</strong>
+                <span class="rounded bg-gray-200 px-2 py-1 text-sm">{{ auth()->user()->role }}</span>
+            </p>
+
+            <form method="POST" action="{{ route('logout') }}" class="mt-6">
+                @csrf
+                <button type="submit" class="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-900">
+                    Log out
+                </button>
+            </form>
+        </div>
+    </div>
+@endsection
