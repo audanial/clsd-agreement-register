@@ -42,4 +42,34 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    /**
+     * Set the user's role to admin.
+     */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'admin',
+        ]);
+    }
+
+    /**
+     * Set the user's role to legal.
+     */
+    public function legal(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'legal',
+        ]);
+    }
+
+    /**
+     * Set the user's role to viewer.
+     */
+    public function viewer(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'viewer',
+        ]);
+    }
 }
