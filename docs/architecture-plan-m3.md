@@ -1,7 +1,8 @@
 # CLSD Agreement Register — Architecture Plan for M3 (Vertical Slice)
 
 > **Author:** Claude Code (Lead Architect) · **For:** Amir (PM) · **Date:** 20 Aug 2026
-> **Status:** PROPOSAL — nothing implemented. Amir approves before OpenCode Go touches code.
+> **Status:** APPROVED by Amir on 21 Aug 2026 — all 7 decisions resolved as recommended
+> (Section 10). Handed to OpenCode Go via `docs/handoff-m3.md`. No decision here is reopenable.
 > **Scope:** M3 ONLY — the three Livewire components that make the register usable.
 > M4 (portfolio tests) and M5 (handover docs) are deliberately out of scope.
 > **Companion docs:** `docs/architecture-plan.md` (M1+M2, approved and now implemented),
@@ -59,32 +60,42 @@ component namespace to this exact file.
 
 Consequence: the chrome renders, the component body is discarded. **No exception, no warning —
 just an empty page.** This must be fixed before the first component is written, or the senior dev
-will lose hours to it. See Open Decision 1.
+will lose hours to it. **Resolved by Decision M3-1:** the layout supports both — `{{ $slot ?? '' }}`
+alongside `@yield('content')` — so M1's shipped views keep working untouched.
 
 **`Campus` has no `active()` scope.** The field spec calls for "Active campuses only".
-`User::active()` exists (M1 added it); `Campus` does not have the equivalent. See Open Decision 2.
+`User::active()` exists (M1 added it); `Campus` does not have the equivalent. **Resolved by
+Decision M3-2:** add `#[Scope] active()` to `Campus`, mirroring `User::active()`. Amir explicitly
+authorized this one model edit.
 
 **PIC dropdown has no realistic data.** `UserSeeder` creates `admin@unikl.edu.my` and
 `legal@unikl.edu.my` only — both Legal-side. A PIC is UniKL staff *outside* Legal. The dropdown
-will show two wrong names in dev. See Open Decision 3.
+will show two wrong names in dev. **Resolved by Decision M3-3:** a new dev-only, env-guarded
+`StaffSeeder`, so no existing seeder is modified.
 
 **`partners.name` is indexed, not unique** (`2026_01_01_000003`, `$table->index('name')`).
-The field spec's inline "add new partner" path will happily create "UiTM" three times. See Open
-Decision 4.
+The field spec's inline "add new partner" path will happily create "UiTM" three times. **Resolved
+by Decision M3-4:** a live similar-name warning that surfaces near-matches without blocking a
+genuinely new partner. No schema change.
 
 **The layout has no nav and no flash-message region.** M3 adds three pages with no way to
 reach them, and saves would give no confirmation. Small additions, but they are M3's job.
+**Resolved by Decision M3-7:** minimal nav plus a flash block, added in the same layout edit as M3-1.
 
 **`EnsureUserHasRole` aborts 403 when `$user === null`.** Harmless as used (`auth` always runs
 first), but if `role:` is ever applied without `auth`, guests get a 403 instead of a login
 redirect. Worth knowing; no change proposed.
 
-### One subtlety that would quietly defeat Decision 4
+### One subtlety that would quietly defeat Decision 4 of the M1/M2 plan
+
+> **Numbering note.** `docs/architecture-plan.md` has Decisions 1–10; this document has its own
+> Decisions 1–7. To keep them apart, M3's are written **M3-1 … M3-7** throughout, and a bare
+> "Decision N" always means the M1/M2 plan.
 
 The field spec says updating `project_status` also stamps `project_status_updated_at`. If the
 form stamps on **every** save instead of only when the value actually changed, the staleness
 clock resets on every edit, `hasStaleProjectStatus()` never returns true, and the badge you
-accepted visible-risk for becomes decorative. **The stamp must be guarded by
+accepted visible-risk for becomes decorative (Decision 4 of the M1/M2 plan). **The stamp must be guarded by
 `$agreement->isDirty('project_status')`.** This is called out again in Section 4 and has a
 dedicated test.
 
@@ -111,8 +122,8 @@ Responsible for: finding an agreement. Nothing else — it neither writes nor mu
 - `updating*()` resets to page 1 on any filter change
 - Query: `Agreement::query()->with(['partner', 'campus', 'pic'])` — **eager loading is required**;
   the list renders partner and campus per row and will N+1 without it
-- `notArchived()` applied by default; `archived()` when `$showArchived` (Decision 7 — archive
-  filtering is always explicit, never a second global scope)
+- `notArchived()` applied by default; `archived()` when `$showArchived` (Decision 7 of the M1/M2
+  plan — archive filtering is always explicit, never a second global scope)
 - Search spans `title` and the related `partner.name` (see Section 3 for the join caveat)
 - Renders: title, type, partner, campus, document status badge, project status badge, stale
   badge, expiry (or "Indefinite"), and a link to detail
@@ -128,8 +139,9 @@ decides the mode.
 - `save()` validates, resolves/creates the partner, stamps `project_status_updated_at` **only
   when `project_status` is dirty**, persists, records activities, flashes, and redirects to the
   detail page
-- A computed `dateWarning` property drives the soft warning (Decision 3) — advisory text, never
-  a validation failure
+- A computed `dateWarning` property drives the soft warning (Decision 3 of the M1/M2 plan) —
+  advisory text, never a validation failure
+- A computed similar-partner warning on `$newPartnerName` (Decision M3-4) — advisory, never blocking
 - Dropdown data as computed properties so they are queried once per render:
   campuses (active only), active users for PIC, partners, countries
 
@@ -208,7 +220,7 @@ Per the field spec in `docs/BUILD_PLAN.md` Section 3.
 
 `max:100` on `short_name` and `max:255` on `title` mirror the migration's column widths.
 
-### Decision 6 has a direct consequence here
+### Decision 6 of the M1/M2 plan has a direct consequence here
 
 `document_status` offers **three** options, not four. Decision 6 resolved that `expiry_date` is
 authoritative and the application **never writes `document_status = 'expired'`** — that enum value
@@ -216,7 +228,7 @@ is legacy-import-only. Putting "Expired" in the dropdown would contradict an app
 create the drift the decision exists to prevent. Expiry is *displayed* (derived from
 `expiry_date` via `isExpired()`), never *selected*.
 
-### Decision 3 — soft warning, not a hard rule
+### Decision 3 of the M1/M2 plan — soft warning, not a hard rule
 
 `expiry_date >= effective_date` is **not** a validation rule. Historical rows may legitimately
 violate it, and a hard rule would make correct data unsaveable — at which point people invent
@@ -253,7 +265,7 @@ $agreement->save();
 ```
 
 `fill()` then check `isDirty()` then `save()`. Stamping unconditionally resets the staleness clock
-on every unrelated edit and silently kills the Decision 4 badge. `project_status_updated_at` stays
+on every unrelated edit and silently kills the badge Decision 4 of the M1/M2 plan exists to drive. `project_status_updated_at` stays
 out of the validated array — it is derived, never user-supplied, even though it is fillable.
 
 ### Null expiry stays meaningful
@@ -286,7 +298,7 @@ detail view renders "Indefinite".
 
 ---
 
-## 6. Who can write — Decision 2
+## 6. Who can write — Decision 2 of the M1/M2 plan
 
 **Treated as locked:** `legal` + `admin` may create and edit; `viewer` is strictly read-only.
 `User::canWrite()` already returns `isAdmin() || isLegal()`, so the rule is encoded once and M3 is
@@ -324,7 +336,11 @@ without reparsing prose. Both are required by the migration comment.
 **Where the logic lives:** a small invokable action, `app/Actions/RecordAgreementActivity.php`.
 It has two call sites (form save, detail status change) and putting it on the `Agreement` model
 would mean editing M2 business logic, which this milestone is explicitly barred from doing. A new
-action class is additive and independently testable. See Open Decision 5 for the alternative.
+action class is additive and independently testable. Approved as Decision M3-5.
+
+**What gets logged (Decision M3-6):** `created` on create, `status_changed` on each status change.
+**Ordinary field edits write nothing** — no `updated` rows. A feed that stays blank until someone
+changes a status looks broken; a feed that records every keystroke stops being read.
 
 **Guards:**
 - Only write when the value **actually changed** — no activity row for a save that touched only
@@ -345,6 +361,7 @@ resources/views/components/badges/document-status.blade.php
 resources/views/components/badges/project-status.blade.php
 resources/views/components/badges/stale.blade.php
 app/Actions/RecordAgreementActivity.php
+database/seeders/StaffSeeder.php          (dev-only PIC accounts — Decision M3-3)
 tests/Feature/Agreement/AgreementsIndexTest.php
 tests/Feature/Agreement/AgreementFormTest.php
 tests/Feature/Agreement/AgreementShowTest.php
@@ -354,16 +371,17 @@ tests/Feature/Agreement/AgreementAccessControlTest.php
 
 ### Modify
 ```
-resources/views/layouts/app.blade.php     (slot support — the blocker; plus nav + flash region)
+resources/views/layouts/app.blade.php     (slot support — the blocker; plus nav + flash region: M3-1, M3-7)
 routes/web.php                            (four Route::livewire entries)
 resources/views/dashboard.blade.php       (link into the register)
+app/Models/Campus.php                     (add #[Scope] active() — Decision M3-2)
+database/seeders/DatabaseSeeder.php       (register StaffSeeder alongside the existing seeders)
 ```
 
-### Conditional on approval
-```
-app/Models/Campus.php                     (add #[Scope] active() — Open Decision 2, NEEDS AMIR APPROVAL)
-database/seeders/StaffSeeder.php          (dev PIC accounts — Open Decision 3)
-```
+**`app/Models/Campus.php` is the single authorized model edit in M3.** The milestone's brief
+otherwise bars touching model logic; Decision M3-2 grants a narrow, additive exception for one
+`#[Scope] active()` method mirroring `User::active()`. Nothing else in that file changes, and the
+exception does not extend to `Agreement`, whose scope, casts and fillable list stay frozen.
 
 ### Routes — order matters
 
@@ -409,17 +427,19 @@ confusing failure that looks like a broken component.
 - `test_required_fields_are_enforced`
 - `test_type_must_be_one_of_the_allowed_values`
 - `test_sector_must_be_academic_or_industri`
-- `test_expired_is_not_an_option_for_document_status` ← **Decision 6**
-- `test_expiry_before_effective_shows_a_warning_but_still_saves` ← **Decision 3**
+- `test_expired_is_not_an_option_for_document_status` ← **Decision 6 (M1/M2 plan)**
+- `test_expiry_before_effective_shows_a_warning_but_still_saves` ← **Decision 3 (M1/M2 plan)**
 - `test_no_warning_when_only_one_date_is_present`
 - `test_empty_expiry_date_persists_as_null`
 - `test_changing_project_status_stamps_project_status_updated_at`
-- `test_saving_without_changing_project_status_does_not_restamp` ← **protects Decision 4**
+- `test_saving_without_changing_project_status_does_not_restamp` ← **protects Decision 4 (M1/M2 plan)**
 - `test_partner_quick_create_creates_a_partner_and_links_it`
 - `test_partner_quick_create_requires_a_name`
+- `test_similar_partner_name_shows_a_warning` ← **Decision M3-4**
+- `test_similar_partner_warning_does_not_block_creation` ← **Decision M3-4**
 - `test_legal_can_edit_an_existing_agreement`
 - `test_pic_dropdown_only_lists_active_users`
-- `test_edit_form_retains_an_inactive_pic_already_assigned` ← see Open Decision 3
+- `test_edit_form_retains_an_inactive_pic_already_assigned` ← Decision M3-3
 - `test_campus_dropdown_only_lists_active_campuses`
 
 `tests/Feature/Agreement/AgreementShowTest.php`
@@ -433,10 +453,12 @@ confusing failure that looks like a broken component.
 - `test_viewer_does_not_see_status_change_controls`
 
 `tests/Feature/Agreement/AgreementActivityLogTest.php`
+- `test_creating_an_agreement_writes_a_created_activity` ← **Decision M3-6**
 - `test_document_status_change_writes_a_status_changed_activity`
 - `test_meta_records_the_field_and_the_from_and_to_values`
 - `test_project_status_change_writes_its_own_activity_row`
 - `test_no_activity_is_written_when_no_status_changed`
+- `test_editing_an_ordinary_field_writes_no_updated_activity` ← **Decision M3-6**
 - `test_activity_records_the_acting_user`
 
 `tests/Feature/Agreement/AgreementAccessControlTest.php`
@@ -455,17 +477,20 @@ Excel import. Those stay in M4/M5.
 
 ---
 
-## 10. Open decisions
+## 10. Decisions — all approved 21 Aug 2026
 
-| # | Decision | Options | **Recommendation** |
+Amir approved every recommendation as written. The options are kept on the record so the
+rejected alternatives and their reasons survive; **none of these is reopenable during M3.**
+
+| # | Question | **Approved 21 Aug 2026** | Options considered |
 |---|---|---|---|
-| **1** | The layout renders `@yield('content')`, Livewire renders into `{{ $slot }}`. M3's pages will be blank until this is resolved. | (a) support both in one file — add `{{ $slot ?? '' }}` alongside `@yield('content')`, and `{{ $title ?? '' }}` alongside `@yield('title')` · (b) convert M1's login + dashboard views to `<x-layouts.app>` component syntax and make the layout slot-only · (c) add a second layout `layouts/page.blade.php` for Livewire and point components at it | **(a)** — one line, zero risk to working M1 views, and both rendering paths work from a single layout. (b) is cleaner long-term but edits M1's shipped views for no functional gain. (c) means two layouts drifting apart. Revisit (b) in M5 if the dual-mode file starts to look odd. |
-| **2** | The field spec wants "active campuses only", but `Campus` has no `active()` scope (`User` does). | (a) add `#[Scope] active()` to `Campus`, mirroring `User::active()` exactly · (b) inline `where('is_active', true)` in the components | **(a)** — four lines, mirrors the existing `User` idiom, and keeps the rule in one place instead of repeated in two components. **NEEDS AMIR APPROVAL: this touches a model, which M3's brief bars.** It is additive (a new query scope, no change to existing behaviour), but it is your call. If you'd rather hold the line, (b) works and costs nothing but duplication. |
-| **3** | PIC dropdown data: `UserSeeder` provides only `admin@` and `legal@`, both Legal-side. A real PIC is non-Legal staff. | (a) accept it — admin creates real staff with `php artisan user:create` · (b) add a dev-only `StaffSeeder` with ~5 `viewer`-role staff, env-guarded like `UserSeeder` · (c) extend `UserSeeder` | **(b)** — a new file, so nothing existing is modified, and the form is actually demonstrable in dev. (c) would edit a seeder the brief protects. Related: the **edit form must keep an already-assigned PIC visible even if that user is now inactive**, or editing an old agreement silently clears its PIC. That behaviour has its own test regardless of which option you pick. |
-| **4** | Partner quick-create can produce duplicates — `partners.name` is indexed, not unique. | (a) `firstOrCreate` on exact name — silently reuses an exact match · (b) live "similar partner exists" warning listing near-matches, user decides · (c) accept duplicates; clean up later | **(b)** — exact-match dedup (a) misses "UiTM" vs "Universiti Teknologi MARA", which is the duplicate that actually happens in this register. A warning surfaces it without blocking a genuinely new partner. **No schema change either way** — adding a unique index would need approval and would break historical imports. |
-| **5** | Where the activity-write logic lives. | (a) `app/Actions/RecordAgreementActivity.php` invokable class · (b) inline in both components · (c) a method on `Agreement` | **(a)** — two call sites, independently testable, and it avoids (c) which would mean editing M2 model logic that this milestone is barred from touching. (b) duplicates the from→to diffing in two places, which is where it will eventually drift. |
-| **6** | Should creation write an activity row too? The enum already has `created` and `updated` types. | (a) log `created` on create and `status_changed` on status changes; skip `updated` for ordinary field edits · (b) status changes only · (c) log everything including `updated` | **(a)** — an activity feed that starts blank until someone changes a status looks broken. Logging every field edit (c) makes the feed noisy enough that Legal stops reading it, which defeats the audit trail. |
-| **7** | The layout has no nav and no flash-message region; M3 adds three unreachable pages with silent saves. | (a) minimal nav (Register / Dashboard / Log out) + a `session('status')` flash block in the layout · (b) leave it; add navigation in M5 | **(a)** — without it the milestone's own definition of done ("a legal user can register an agreement end-to-end") can't be demonstrated in a browser. It is ~15 lines in the layout, not a design project. |
+| **M3-1** | The layout renders `@yield('content')`, Livewire renders into `{{ $slot }}`. M3's pages will be blank until this is resolved. | **(a) — approved.** Support both in one file: `{{ $slot ?? '' }}` alongside `@yield('content')`, `{{ $title ?? '' }}` alongside `@yield('title')`. One line, zero risk to working M1 views, both rendering paths from a single layout. **This is the first thing built in M3** — see the handoff prompt. Revisit (b) in M5 if the dual-mode file starts to look odd. | (b) convert M1's login + dashboard to `<x-layouts.app>` and make the layout slot-only — cleaner long-term but edits M1's shipped views for no functional gain · (c) a second `layouts/page.blade.php` — two layouts that drift apart |
+| **M3-2** | The field spec wants "active campuses only", but `Campus` has no `active()` scope (`User` does). | **(a) — approved.** Add `#[Scope] active()` to `Campus`, mirroring `User::active()` exactly. Four lines, matches the existing idiom, keeps the rule in one place. **Amir explicitly authorized this model edit**, which M3's brief otherwise bars; the exception is narrow and additive, and covers `Campus.php` only. | (b) inline `where('is_active', true)` in both components — no model edit, but the rule is duplicated |
+| **M3-3** | PIC dropdown data: `UserSeeder` provides only `admin@` and `legal@`, both Legal-side. A real PIC is non-Legal staff. | **(b) — approved.** A dev-only `StaffSeeder` with ~5 `viewer`-role staff, env-guarded exactly like `UserSeeder`. A new file, so nothing existing is modified, and the form is demonstrable in dev. Carries with it: the **edit form must keep an already-assigned PIC visible even if that user is now inactive**, or editing an old agreement silently clears its PIC. That has its own test. | (a) accept it; admin creates staff via `php artisan user:create` · (c) extend `UserSeeder` — edits a seeder the brief protects |
+| **M3-4** | Partner quick-create can produce duplicates — `partners.name` is indexed, not unique. | **(b) — approved.** A live "similar partner exists" warning listing near-matches; the user decides. Non-blocking. Exact-match dedup misses "UiTM" vs "Universiti Teknologi MARA", which is the duplicate that actually happens in this register. **No schema change** — a unique index would need approval and would break historical imports. | (a) `firstOrCreate` on exact name — silently reuses exact matches, misses the real cases · (c) accept duplicates and clean up later |
+| **M3-5** | Where the activity-write logic lives. | **(a) — approved.** `app/Actions/RecordAgreementActivity.php`, an invokable class. Two call sites, independently testable, and it avoids editing M2 model logic this milestone is barred from touching. | (b) inline in both components — duplicates the from→to diffing, which is where it drifts · (c) a method on `Agreement` — edits M2 business logic |
+| **M3-6** | Should creation write an activity row too? The enum already has `created` and `updated` types. | **(a) — approved.** Log `created` on create and `status_changed` on status changes; **skip `updated` for ordinary field edits.** A feed that stays blank until someone changes a status looks broken; logging every field edit makes it noisy enough that Legal stops reading it, which defeats the audit trail. | (b) status changes only · (c) log everything including `updated` |
+| **M3-7** | The layout has no nav and no flash-message region; M3 adds three unreachable pages with silent saves. | **(a) — approved.** Minimal nav (Register / Dashboard / Log out) plus a `session('status')` flash block, added in the same layout edit as M3-1. Without it the milestone's own definition of done — "a legal user can register an agreement end-to-end" — can't be demonstrated in a browser. ~15 lines, not a design project. | (b) leave it; add navigation in M5 |
 
 ---
 
@@ -477,11 +502,18 @@ Excel import. Those stay in M4/M5.
    re-run expecting pretty output. Expect ~57 existing + ~50 new tests.
 2. `vendor\bin\pint` clean on every touched PHP file.
 3. `php artisan migrate:fresh --seed`, then in the browser:
-   - Log in as `legal@unikl.edu.my` → nav shows the register → `/agreements` lists rows
-   - Create an agreement end-to-end, including one via the inline "add new partner" path
+   - Log in as `legal@unikl.edu.my` → **nav is visible and links to the register** (M3-7) →
+     `/agreements` lists rows
+   - The PIC dropdown offers real non-Legal staff names, not just `admin@` and `legal@` (M3-3)
+   - Create an agreement end-to-end, including one via the inline "add new partner" path →
+     **a flash message confirms the save** (M3-7)
+   - The new agreement's detail page already shows one `created` activity row (M3-6)
+   - Type a partner name close to an existing one → **the similar-partner warning appears and
+     does not block saving** (M3-4)
    - Set `effective_date` after `expiry_date` → **amber warning appears and the record still saves**
    - Open the detail page → change document status → the activity feed shows the change with
      from→to, attributed to the legal user
+   - Edit only the notes field and save → **no new activity row appears** (M3-6)
    - An agreement with `project_status_updated_at` older than 90 days shows the stale badge;
      edit an unrelated field, save, and confirm **the badge is still there** (the guarded stamp)
    - An agreement with no expiry date renders "Indefinite", not a blank cell

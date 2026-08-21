@@ -59,3 +59,11 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
 - Enum columns (document_status, project_status, type, sector) are plain
   strings for now, not PHP enum casts — deferred as a low-risk refactor
   once CRUD is working end-to-end.
+
+## Future considerations (not yet scoped/planned)
+
+- Non-technical Legal staff cannot use `php artisan user:create` to add new
+  PICs (project owners). Before full handover (M5), need either: (a) a
+  simple admin-only "create user" web form, or (b) written step-by-step
+  instructions with screenshots for running the command via whatever server
+  access method Legal will have. Raised 21 Aug 2026.
