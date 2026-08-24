@@ -128,6 +128,11 @@ class AgreementFormTest extends TestCase
             ->set('expiry_date', '2026-01-01')
             ->set('document_status', 'pending')
             ->set('project_status', 'not_started')
+            ->assertSet(
+                'dateWarning',
+                'Expiry date is earlier than the effective date. Save anyway if that matches the document.'
+            )
+            ->assertSee('Expiry date is earlier than the effective date')
             ->call('save')
             ->assertRedirect();
 
@@ -301,6 +306,24 @@ class AgreementFormTest extends TestCase
             ->assertRedirect();
 
         $this->assertDatabaseHas('partners', ['name' => 'Teknologi MARA']);
+    }
+
+    public function test_acronym_partner_name_does_not_trigger_similar_warning(): void
+    {
+        // CHARACTERISATION TEST for DEF-003.
+        // Decision M3-4 cited "UiTM" vs "Universiti Teknologi MARA" as the
+        // duplicate case the matcher must catch. The current substring
+        // implementation does not catch it. This test pins that limitation;
+        // it is EXPECTED to fail if M5 improves the matcher, which is the
+        // signal it exists to give.
+        Partner::factory()->create(['name' => 'Universiti Teknologi MARA']);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form')
+            ->set('partnerMode', 'new')
+            ->set('newPartnerName', 'UiTM')
+            ->assertDontSee('Universiti Teknologi MARA');
     }
 
     public function test_legal_can_edit_an_existing_agreement(): void

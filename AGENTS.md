@@ -67,3 +67,8 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
   simple admin-only "create user" web form, or (b) written step-by-step
   instructions with screenshots for running the command via whatever server
   access method Legal will have. Raised 21 Aug 2026.
+
+- UI/UX polish and visual design pass — current M3 UI is functional but
+  plain (default browser styling, minimal Tailwind). Worth a design pass
+  once real users have used the MVP and given feedback on what's confusing
+  or missing, rather than guessing now. Raised 24 Aug 2026.

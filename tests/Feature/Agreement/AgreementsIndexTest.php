@@ -158,14 +158,21 @@ class AgreementsIndexTest extends TestCase
 
     public function test_stale_badge_is_shown_only_for_stale_rows(): void
     {
-        Agreement::factory()->signed()->create(['title' => 'Fresh']);
-        Agreement::factory()->signed()->staleProjectStatus()->create(['title' => 'Stale']);
+        Agreement::factory()->signed()->create(['title' => 'Fresh Row']);
+        Agreement::factory()->signed()->staleProjectStatus()->create(['title' => 'Stale Row']);
 
         $this->actingAs(User::factory()->legal()->create());
 
-        Livewire::test('agreements-index')
-            ->assertSee('Stale')
-            ->assertSee('Fresh');
+        $component = Livewire::test('agreements-index');
+        $html = $component->html();
+
+        $component->assertSee('Stale Row')
+            ->assertSee('Fresh Row')
+            ->assertSee('Project status last updated');
+
+        $this->assertSame(1, substr_count($html, 'Project status last updated'));
+        $this->assertStringContainsString('Stale Row', $html);
+        $this->assertStringContainsString('Fresh Row', $html);
     }
 
     public function test_viewer_does_not_see_the_create_button(): void
@@ -175,5 +182,17 @@ class AgreementsIndexTest extends TestCase
         $this->get(route('agreements.index'))
             ->assertOk()
             ->assertDontSee('Create agreement');
+    }
+
+    public function test_viewer_pagination_total_excludes_pending_rows(): void
+    {
+        Agreement::factory()->signed()->count(18)->create();
+        Agreement::factory()->pending()->count(3)->create();
+
+        $this->actingAs(User::factory()->viewer()->create());
+
+        Livewire::test('agreements-index')
+            ->assertSeeHtml('<span class="font-medium">18</span>')
+            ->assertDontSeeHtml('<span class="font-medium">21</span>');
     }
 }
