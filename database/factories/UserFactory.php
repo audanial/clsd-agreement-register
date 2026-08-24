@@ -46,7 +46,17 @@ class UserFactory extends Factory
     }
 
     /**
-     * Indicate that the user is inactive.
+     * Indicate that the model is active.
+     */
+    public function active(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_active' => true,
+        ]);
+    }
+
+    /**
+     * Indicate that the model is inactive.
      */
     public function inactive(): static
     {

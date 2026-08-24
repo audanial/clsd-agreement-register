@@ -12,12 +12,18 @@
                 <span class="rounded bg-gray-200 px-2 py-1 text-sm">{{ auth()->user()->role }}</span>
             </p>
 
-            <form method="POST" action="{{ route('logout') }}" class="mt-6">
-                @csrf
-                <button type="submit" class="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-900">
-                    Log out
-                </button>
-            </form>
+            <div class="mt-6 flex gap-3">
+                <a href="{{ route('agreements.index') }}" class="rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">
+                    Open register
+                </a>
+
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-900">
+                        Log out
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 @endsection

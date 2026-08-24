@@ -16,4 +16,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function () {
         return view('dashboard');
     })->name('dashboard');
+
+    Route::livewire('/agreements', 'agreements-index')->name('agreements.index');
+
+    Route::middleware('role:admin,legal')->group(function () {
+        Route::livewire('/agreements/create', 'agreement-form')->name('agreements.create');
+        Route::livewire('/agreements/{agreement}/edit', 'agreement-form')->name('agreements.edit');
+    });
+
+    Route::livewire('/agreements/{agreement}', 'agreement-show')->name('agreements.show');
 });

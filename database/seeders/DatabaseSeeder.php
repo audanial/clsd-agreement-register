@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             CampusSeeder::class,
             CountrySeeder::class,
             UserSeeder::class,
+            StaffSeeder::class,
         ]);
     }
 }
