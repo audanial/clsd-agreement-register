@@ -60,6 +60,20 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
   strings for now, not PHP enum casts — deferred as a low-risk refactor
   once CRUD is working end-to-end.
 
+## Design philosophy (guides all future decisions, not just M1-M5)
+
+- Optimize for convenience and usability by non-technical Legal staff over
+  visual polish or impressive features. The system must remain operable
+  by Legal (specifically Intan, the trusted successor as of 26 Aug 2026)
+  after Amir is no longer involved.
+- Every feature decision should ask: "can Intan do this without technical
+  help?" If the answer requires a terminal, a code editor, or developer
+  knowledge, it's a gap, not an acceptable tradeoff — see M5-2 (user
+  management form) as the first concrete example of this principle in
+  practice.
+- Ms. Haniza departed Legal 26 Aug 2026; Intan (Legal Executive) is the
+  confirmed handover contact and system owner going forward.
+
 ## Future considerations (not yet scoped/planned)
 
 - Non-technical Legal staff cannot use `php artisan user:create` to add new
