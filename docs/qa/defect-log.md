@@ -17,8 +17,8 @@
 | **Date found** | 24 Aug 2026 |
 | **Component** | `app/Models/Agreement.php` — `hasStaleProjectStatus()` |
 | **Severity** | Minor |
-| **Priority** | Low — cosmetic boundary imprecision, not a functional break |
-| **Status** | Accepted — documented, not fixed in M4 |
+| **Priority** | Low — boundary semantics, not a functional break |
+| **Status** | Closed — working as intended |
 
 **Description**
 `STALE_AFTER_DAYS` is `90`, and the intent (per the model's naming and the M2/M3 architecture
@@ -52,25 +52,25 @@ has always moved slightly forward by the time the comparison happens. This makes
 timestamp always evaluate as "less than" (i.e., older than) the boundary, even when it was
 set to exactly 90 days at creation time.
 
+**Resolution**
+Decision M5-8 (26 Aug 2026): a boundary date is crossed at the **start** of that day. Applied
+to `STALE_AFTER_DAYS`, exactly 90 days without an update is therefore **already stale**. The
+report and analysis above are correct; the resolution is a business decision that makes the
+existing behaviour right rather than a code fix.
+
+**Fix / robustness improvement (M5-10)**
+The comparison was rewritten to be day-based and deterministic:
+```php
+$this->project_status_updated_at->startOfDay()
+    ->lte(now()->subDays(self::STALE_AFTER_DAYS)->startOfDay());
+```
+This preserves the M5-8 answer but removes the dependency on real-time drift. The null check
+(`project_status_updated_at === null` is stale) is unchanged.
+
 **Verification**
-Confirmed reproducible — the boundary test
-(`tests/Feature/Agreement/BoundaryConditionsTest.php::test_has_stale_project_status_is_true_past_the_boundary`)
-fails consistently on the 90-day case across multiple runs, not a one-off timing fluke.
-
-**Why the existing tests missed it**
-No existing test exercised the exact 90-day boundary before this one. The only prior coverage
-(`UserRoleTest`/`AgreementCastsTest`'s stale-status test) used a "fresh" case at 30 days and a
-"stale" case using the `staleProjectStatus()` factory state (which sets `STALE_AFTER_DAYS + 1`,
-i.e. 91 days) — deliberately clear of the boundary, so the imprecision was never exercised.
-
-**Disposition**
-Not fixed in M4 — this is a one-day boundary imprecision with low real-world impact (nobody is
-likely to act differently based on an agreement being flagged stale one day early), and fixing
-it correctly would require deciding the exact intended semantics (should the comparison be
-`<=` instead of `<`? Should it be based on calendar days rather than exact elapsed time?) —
-a business/design question similar in nature to DEF-005's expiry-day ambiguity. Recommend
-revisiting alongside DEF-005 in M5, since both stem from the same category of issue: date/time
-boundary comparisons that are precise in code but ambiguous in intent.
+`BoundaryConditionsTest::test_has_stale_project_status_is_true_past_the_boundary` asserts the
+89/90/91 boundary and passes under a frozen clock as well as under real time. `composer test`
+green at 115.
 
 ---
 
@@ -155,35 +155,39 @@ Added `BoundaryConditionsTest::test_staleness_boundary_at_ninety_days_is_not_sta
 | **Component** | `Agreement::isExpired()`, `Agreement::expired()` scope, `Agreement::expiringSoon()` scope |
 | **Severity** | Minor |
 | **Priority** | Low |
-| **Status** | Accepted — deferred |
+| **Status** | Closed — fixed |
 
 **Description**
-For an agreement whose `expiry_date` is today, the code gives three different answers:
+For an agreement whose `expiry_date` is today, the code gave three different answers:
 
-| Path | Answer | Why |
+| Path | Answer before M5-8 | Why |
 |---|---|---|
 | `isExpired()` | Expired | `expiry_date->isPast()` on a `date` cast is midnight today, so it is "past" from 00:00:01 |
 | `expired()` scope | Not expired | `whereDate('expiry_date', '<', today())` |
-| `expiringSoon()` scope | Expiring soon | `whereBetween('expiry_date', [today(), …])` includes today |
+| `expiringSoon()` scope | Expiring soon | `whereBetween('expiry_date', [today(), …])` included today |
 
 **Steps to reproduce**
 1. Create an agreement with `expiry_date = today()`.
 2. Call `isExpired()`, `Agreement::expired()->exists()`, and `Agreement::expiringSoon()->exists()`.
 
-**Expected**
-A single, consistent answer across all three paths.
+**Expected (after M5-8)**
+All three paths report **expired**: an agreement expires at the start of its `expiry_date`, so on that date it is already expired and is not "expiring soon".
 
-**Actual**
+**Actual (before fix)**
 Three different answers.
 
 **Root cause**
-The business has not decided whether an agreement expires at the start or the end of its expiry date. Each path was written without reconciling against the others.
+The business had not decided whether an agreement expires at the start or the end of its expiry date. Each path was written without reconciling against the others.
 
 **Fix / disposition**
-Deferred to M5 pending a business decision. The inconsistency is pinned by `BoundaryConditionsTest::test_expiry_today_behaviour_is_consistently_recorded`, a characterisation test that asserts the current behaviour and references this defect.
+Decision M5-8 (26 Aug 2026): an agreement expires at the **start** of its `expiry_date`; a boundary date is crossed at the start of that day. The model was aligned to this rule:
+
+- `expired()` scope: changed `whereDate('expiry_date', '<', today())` to `'<='` so today counts as expired.
+- `expiringSoon()` scope: replaced `whereBetween('expiry_date', [today(), today()->addDays($days)])` with two `whereDate` calls expressing `(today, today+N]` — exclusive at the near end, inclusive at the far end — so today is excluded.
+- `isExpired()`: rewritten as a day-based comparison (`expiry_date->startOfDay()->lte(today())`) so the answer is deterministic rather than dependent on the current time never being exactly midnight.
 
 **Verification**
-Characterisation test passes and documents the known inconsistency. The defect will be closed when the business rule is chosen and all three paths are aligned.
+`BoundaryConditionsTest::test_expiry_today_behaviour_is_consistently_recorded` asserts that an agreement expiring today is expired by all three paths and that an agreement expiring tomorrow is not expired but is expiring soon. `composer test` green at 115.
 
 ---
 

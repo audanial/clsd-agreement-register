@@ -99,14 +99,15 @@ class Agreement extends Model
     protected function expiringSoon(Builder $query, int $days = 90): void
     {
         $query->whereNotNull('expiry_date')
-            ->whereBetween('expiry_date', [today(), today()->addDays($days)]);
+            ->whereDate('expiry_date', '>', today())
+            ->whereDate('expiry_date', '<=', today()->addDays($days));
     }
 
     #[Scope]
     protected function expired(Builder $query): void
     {
         $query->whereNotNull('expiry_date')
-            ->whereDate('expiry_date', '<', today());
+            ->whereDate('expiry_date', '<=', today());
     }
 
     protected function year(): Attribute
@@ -123,7 +124,7 @@ class Agreement extends Model
 
     public function isExpired(): bool
     {
-        return $this->expiry_date !== null && $this->expiry_date->isPast();
+        return $this->expiry_date !== null && $this->expiry_date->startOfDay()->lte(today());
     }
 
     public function isArchived(): bool
@@ -134,6 +135,7 @@ class Agreement extends Model
     public function hasStaleProjectStatus(): bool
     {
         return $this->project_status_updated_at === null
-            || $this->project_status_updated_at->lt(now()->subDays(self::STALE_AFTER_DAYS));
+            || $this->project_status_updated_at->startOfDay()
+                ->lte(now()->subDays(self::STALE_AFTER_DAYS)->startOfDay());
     }
 }
