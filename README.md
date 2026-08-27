@@ -94,15 +94,19 @@ A **PIC** (project owner) is just a user, usually with the `viewer` role. They d
 
 ## Managing users
 
-There is no user-management UI in this version. Add or reset users from the command line.
+Admin users can add and deactivate people from the web UI:
 
-Create a user:
+1. Click **Users** in the top navigation.
+2. Fill in **Name**, **Email**, **Role**, and an **Initial password**.
+3. Click **Create user**.
+
+The new user can then be selected as the PIC in the agreement form. Deactivating a user removes them from the PIC dropdown but keeps them visible on any agreement they were already assigned to.
+
+An admin cannot deactivate their own account from the UI. If the only admin is unavailable, use the command line:
 
 ```bash
-php artisan user:create --email=someone@unikl.edu.my --role=viewer
+php artisan user:create --email=you@unikl.edu.my --role=admin
 ```
-
-The command interactively prompts for a name and password. Valid roles are `admin`, `legal`, and `viewer`.
 
 Reset a user's password:
 

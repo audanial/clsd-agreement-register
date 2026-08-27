@@ -1439,3 +1439,148 @@ User A's save overwrites User B's change. This is the accepted current behaviour
 Manual only — no automated test because the fix is deferred. Reason: implementing a guard requires a schema change (`lock_version` or compare-and-set), which M4 is barred from making.
 
 **Status** Accepted — deferred (DEF-007)
+
+---
+
+## 11. User Management
+
+### TC-058 — Only admins can reach the user-management page
+
+| | |
+|---|---|
+| **Feature area** | User Management |
+| **Business rule** | BR-26 — User management is admin-only |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | One admin, one legal, and one viewer user exist |
+
+**Steps**
+1. Request `/users` as each user.
+
+**Expected result**
+Admin gets a 200 response; legal and viewer get 403.
+
+**Automated by**
+`UserManagementTest::test_admin_can_reach_user_management_page`  
+`UserManagementTest::test_legal_user_gets_403_on_user_management_page`  
+`UserManagementTest::test_viewer_gets_403_on_user_management_page`
+
+**Status** Pass (27 Aug 2026)
+
+---
+
+### TC-059 — Creating a user persists the correct role and active state
+
+| | |
+|---|---|
+| **Feature area** | User Management |
+| **Business rule** | BR-26 — Admins can create users |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | An admin is logged in |
+
+**Steps**
+1. Submit the create-user form with name, email, role, and password.
+
+**Expected result**
+A user row is created with the supplied name, email, and role, and `is_active = true`.
+
+**Automated by**
+`UserManagementTest::test_creating_a_user_persists_the_correct_role_and_active_state`
+
+**Status** Pass (27 Aug 2026)
+
+---
+
+### TC-060 — Duplicate email is rejected when creating a user
+
+| | |
+|---|---|
+| **Feature area** | User Management |
+| **Business rule** | BR-26 — Email addresses must be unique |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | A user with the target email already exists; an admin is logged in |
+
+**Steps**
+1. Submit the create-user form with an email already in use.
+
+**Expected result**
+The form returns a validation error on the email field and no second user is created.
+
+**Automated by**
+`UserManagementTest::test_duplicate_email_is_rejected`
+
+**Status** Pass (27 Aug 2026)
+
+---
+
+### TC-061 — An admin cannot deactivate their own account
+
+| | |
+|---|---|
+| **Feature area** | User Management |
+| **Business rule** | BR-26 — Self-deactivation is blocked to prevent lockout |
+| **Priority** | Critical |
+| **Type** | Automated |
+| **Preconditions** | An admin is logged in |
+
+**Steps**
+1. Attempt to deactivate the acting admin from the user list.
+
+**Expected result**
+The database still shows `is_active = true` for the admin.
+
+**Automated by**
+`UserManagementTest::test_admin_cannot_deactivate_their_own_account`
+
+**Status** Pass (27 Aug 2026)
+
+---
+
+### TC-062 — Deactivating a user removes them from the PIC dropdown
+
+| | |
+|---|---|
+| **Feature area** | User Management |
+| **Business rule** | BR-26 — Deactivation is reflected immediately in the agreement form |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | An active user exists; an admin is logged in |
+
+**Steps**
+1. Open the agreement create form and confirm the user appears in the PIC dropdown.
+2. Deactivate the user via the user-management page.
+3. Open the agreement create form again.
+
+**Expected result**
+The deactivated user no longer appears in the PIC dropdown. Existing agreements they were assigned to still show their name (already covered by TC-026).
+
+**Automated by**
+`UserManagementTest::test_deactivating_a_user_removes_them_from_the_pic_dropdown`
+
+**Status** Pass (27 Aug 2026)
+
+---
+
+### TC-063 — A user deactivated through the UI cannot log in
+
+| | |
+|---|---|
+| **Feature area** | User Management |
+| **Business rule** | BR-02 / BR-26 — Only active users can log in |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | An active user exists; an admin is logged in |
+
+**Steps**
+1. Deactivate the user via the user-management page.
+2. Log out and attempt to log in as the deactivated user.
+
+**Expected result**
+Login is rejected with the generic `auth.failed` message.
+
+**Automated by**
+`UserManagementTest::test_deactivated_user_cannot_log_in`
+
+**Status** Pass (27 Aug 2026)

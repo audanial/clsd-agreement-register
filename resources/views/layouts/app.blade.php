@@ -18,6 +18,9 @@
                 <div class="flex items-center gap-4 text-sm">
                     <a href="{{ route('agreements.index') }}" class="hover:text-gray-300">Register</a>
                     <a href="{{ route('dashboard') }}" class="hover:text-gray-300">Dashboard</a>
+                    @if (auth()->user()->canManageUsers())
+                        <a href="{{ route('users.index') }}" class="hover:text-gray-300">Users</a>
+                    @endif
                     <form method="POST" action="{{ route('logout') }}" class="inline">
                         @csrf
                         <button type="submit" class="hover:text-gray-300">Log out</button>

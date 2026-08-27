@@ -25,7 +25,7 @@ composer test
 `laravel/pao` detects an AI agent and emits compact JSON. Parse the `result` field:
 
 ```json
-{"tool":"phpunit","result":"passed","tests":117,"passed":117,...}
+{"tool":"phpunit","result":"passed","tests":125,"passed":125,...}
 ```
 
 If you are not an AI agent, PHPUnit renders normal pretty output; the acceptance criterion is the same: the `result` field must be `passed`.

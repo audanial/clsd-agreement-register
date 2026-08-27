@@ -26,6 +26,16 @@
 
 > Answers: "A new project owner joined — what do I do?"
 
+1. Log in as an admin user.
+2. Click **Users** in the top navigation.
+3. Fill in **Name**, **Email**, **Role**, and an **Initial password**.
+   - Use **viewer** for project owners who only need to appear in the PIC dropdown.
+   - Use **legal** for Legal staff who will create or edit agreements.
+   - Use **admin** only for the system owner; it can create and deactivate other accounts.
+4. Click **Create user**. The person can now be selected as PIC on an agreement.
+
+To deactivate someone, click **Deactivate** on their row. They disappear from the PIC dropdown, but any agreement already assigned to them keeps their name. You cannot deactivate your own account from the web UI; if you are locked out, a developer with server access must run `php artisan user:create` to make a new admin.
+
 ## What it does not do
 
 > Answers: "Can it email reminders / hold the signed PDFs / import the old spreadsheet?"

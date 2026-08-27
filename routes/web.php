@@ -17,6 +17,10 @@ Route::middleware('auth')->group(function () {
         return view('dashboard');
     })->name('dashboard');
 
+    Route::middleware('role:admin')->group(function () {
+        Route::livewire('/users', 'user-manager')->name('users.index');
+    });
+
     Route::livewire('/agreements', 'agreements-index')->name('agreements.index');
 
     Route::middleware('role:admin,legal')->group(function () {

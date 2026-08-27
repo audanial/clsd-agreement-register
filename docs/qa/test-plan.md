@@ -72,7 +72,7 @@ Manual cases are marked **Manual only** in `test-cases.md` with the reason state
 ## 4. Entry criteria
 
 - M1, M2 and M3 code is merged.
-- `composer test` is green at 115 tests.
+- `composer test` is green at 117 tests.
 - `vendor\bin\pint` is clean on the existing codebase.
 
 ---
@@ -82,7 +82,7 @@ Manual cases are marked **Manual only** in `test-cases.md` with the reason state
 - Every business rule in `traceability-matrix.md` maps to at least one executed test case or an explicitly documented gap.
 - Every automated test named in the matrix and test-case document exists and is spelled correctly.
 - All defects in `defect-log.md` have a severity, root cause, and disposition (`Closed`, `Deferred`, or `Accepted`).
-- `composer test` is green at 117 tests.
+- `composer test` is green at 125 tests.
 - `git status` shows no modified application files (`app/`, `database/migrations/`, `database/seeders/`, `resources/views/`, `routes/`).
 
 ---
