@@ -3,8 +3,10 @@
 namespace Tests\Feature\Agreement;
 
 use App\Models\Agreement;
+use App\Models\Partner;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class BoundaryConditionsTest extends TestCase
@@ -66,5 +68,52 @@ class BoundaryConditionsTest extends TestCase
         $this->assertFalse($expiringTomorrow->isExpired());
         $this->assertFalse(Agreement::expired()->whereKey($expiringTomorrow->id)->exists());
         $this->assertTrue(Agreement::expiringSoon()->whereKey($expiringTomorrow->id)->exists());
+    }
+
+    /**
+     * DEF-010: similarPartners() must not query until the input is at least
+     * three characters long. This pins the minimum-query-length floor.
+     */
+    public function test_similar_partners_returns_empty_for_short_input(): void
+    {
+        Partner::factory()->create(['name' => 'Benchmark University']);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form')
+            ->set('partnerMode', 'new')
+            ->set('newPartnerName', 'b')
+            ->assertDontSee('Similar partners already exist');
+
+        Livewire::test('agreement-form')
+            ->set('partnerMode', 'new')
+            ->set('newPartnerName', 'be')
+            ->assertDontSee('Similar partners already exist');
+
+        Livewire::test('agreement-form')
+            ->set('partnerMode', 'new')
+            ->set('newPartnerName', 'ben')
+            ->assertSee('Similar partners already exist:')
+            ->assertSee('Benchmark University');
+    }
+
+    /**
+     * DEF-009 / Decision M5-5: a null PIC must render as an em dash on the
+     * detail page, and the list row must still render.
+     */
+    public function test_null_pic_renders_as_em_dash_and_row_still_renders(): void
+    {
+        $agreement = Agreement::factory()->signed()->create([
+            'pic_user_id' => null,
+        ]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $detail = Livewire::test('agreement-show', ['agreement' => $agreement]);
+        $this->assertStringContainsString('PIC', $detail->html());
+        $this->assertStringContainsString('<dd class="mt-1 text-sm">—</dd>', $detail->html());
+
+        Livewire::test('agreements-index')
+            ->assertSee($agreement->title);
     }
 }

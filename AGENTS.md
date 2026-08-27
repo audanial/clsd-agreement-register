@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MOA/MOU/SEA/MOC/ADDENDUM) with partners, per campus. Laravel 13 + Livewire 4 + Tailwind CSS 4 + Vite, SQLite at `database/database.sqlite`. Early stage: schema and seeders exist, but routes/controllers/Livewire components are not built yet (`routes/web.php` is still the default welcome page; README is the stock Laravel one).
+Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MOA/MOU/SEA/MOC/ADDENDUM) with partners, per campus. Laravel 13 + Livewire 4 + Tailwind CSS 4 + Vite, SQLite at `database/database.sqlite`. M1–M4 are complete: migrations, seeders, the agreement CRUD vertical slice, the pending-agreement global scope, and the M4/M5a QA handover artifacts are in place. `README.md` and `docs/HANDOVER.md` have been rewritten for the M5 handover.
 
 ## Commands
 
@@ -38,9 +38,8 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
   not 4 with MIA — senior exec confirmed MIA isn't tracked. UniKL always
   signs before an agreement leaves Legal, so the only "unsigned" state that
   matters is the partner's signature.
-- `pending` = internal vetting (board/CEO/VC approval + Ms. Haniza's
-  signature) — hidden from non-Legal users via a global scope. Not yet
-  implemented; still needs building.
+- `pending` = internal vetting (board/CEO/VC approval + Legal signature) —
+  hidden from non-Legal users via a global scope. Implemented in M3.
 - Project status (not_started/ongoing/stalled/completed) is maintained by
   the PIC/project owner, not Legal — Legal is a middleman answering status
   queries from MARA Corp, not chasing partners themselves.
@@ -76,11 +75,10 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
 
 ## Future considerations (not yet scoped/planned)
 
-- Non-technical Legal staff cannot use `php artisan user:create` to add new
-  PICs (project owners). Before full handover (M5), need either: (a) a
-  simple admin-only "create user" web form, or (b) written step-by-step
-  instructions with screenshots for running the command via whatever server
-  access method Legal will have. Raised 21 Aug 2026.
+- M5-2 user management: non-technical Legal staff cannot use `php artisan user:create` to add new
+  PICs (project owners). The M5 handover plan includes a simple admin-only "create user" web form
+  so Intan can manage accounts without a terminal. Until that form is built, the command remains
+  the only path and is documented in `README.md`. Raised 21 Aug 2026; updated 27 Aug 2026.
 
 - UI/UX polish and visual design pass — current M3 UI is functional but
   plain (default browser styling, minimal Tailwind). Worth a design pass

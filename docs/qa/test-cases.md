@@ -603,19 +603,23 @@ No warning is shown. *This pins current behaviour per DEF-003; the test is expec
 | **Feature area** | Agreement Creation & Validation |
 | **Business rule** | BR-10 — Deliberate `< 3` character floor |
 | **Priority** | Low |
-| **Type** | Automated (boundary) — test to be added as learning exercise |
+| **Type** | Automated (boundary) |
 | **Preconditions** | A partner with a name longer than two characters exists |
 
 **Steps**
-1. Start creating new partners named "U" and "UM".
+1. Open the create form in "new partner" mode.
+2. Type a one-character name and inspect `similarPartners()`.
+3. Type a two-character name and inspect `similarPartners()`.
+4. Type a three-character substring of the existing partner's name and inspect `similarPartners()`.
 
 **Expected result**
-No similar-partner warning appears for either name.
+- One- and two-character inputs return an empty collection and do not render the warning.
+- The three-character input returns the matching partner and renders the warning.
 
 **Automated by**
-Pending — `BoundaryConditionsTest` to be written by Amir as a learning exercise.
+`BoundaryConditionsTest::test_similar_partners_returns_empty_for_short_input`
 
-**Status** Not yet executed
+**Status** Pass (27 Aug 2026)
 
 ---
 
@@ -827,23 +831,24 @@ Neither scope includes the null-expiry agreement.
 | | |
 |---|---|
 | **Feature area** | Dates & Expiry Semantics |
-| **Business rule** | BR-05 / BR-06 — Known inconsistency pinned per DEF-005 |
+| **Business rule** | BR-05 / BR-06 — Agreement expires at the start of its expiry date (M5-8) |
 | **Priority** | Medium |
-| **Type** | Automated (characterisation) — test to be added as learning exercise |
-| **Preconditions** | An agreement with `expiry_date = today()` exists |
+| **Type** | Automated (characterisation) |
+| **Preconditions** | Agreements with `expiry_date = today()` and `expiry_date = tomorrow()` exist |
 
 **Steps**
-1. Call `isExpired()`.
-2. Call `Agreement::expired()->exists()`.
-3. Call `Agreement::expiringSoon()->exists()`.
+1. Call `isExpired()` on each.
+2. Call `Agreement::expired()->exists()` for each.
+3. Call `Agreement::expiringSoon()->exists()` for each.
 
 **Expected result**
-`isExpired()` returns `true`; `expired()` scope returns `false`; `expiringSoon()` returns `true`. *This pins current behaviour and references DEF-005.*
+- For today: all three paths report **expired**.
+- For tomorrow: `isExpired()` and `expired()` are `false`; `expiringSoon()` is `true`.
 
 **Automated by**
-Pending — `BoundaryConditionsTest` to be written by Amir as a learning exercise.
+`BoundaryConditionsTest::test_expiry_today_behaviour_is_consistently_recorded`
 
-**Status** Not yet executed
+**Status** Pass (27 Aug 2026)
 
 ---
 
@@ -897,27 +902,28 @@ Both return `null` without error.
 
 ---
 
-### TC-036 — Partner with null country renders on list and detail
+### TC-036 — Agreement with null PIC renders on list and detail
 
 | | |
 |---|---|
 | **Feature area** | Partner Management |
-| **Business rule** | BR-18 — Optional `country_id` must not break rendering |
+| **Business rule** | BR-11 — Historical rows may have no PIC; rendering must not break |
 | **Priority** | Medium |
-| **Type** | Automated — test to be added as learning exercise |
-| **Preconditions** | A partner with `country_id = null` is linked to an agreement |
+| **Type** | Automated |
+| **Preconditions** | An agreement with `pic_user_id = null` exists |
 
 **Steps**
-1. Render the agreements list.
-2. Render the agreement detail page.
+1. Render the agreement detail page.
+2. Render the agreements list.
 
 **Expected result**
-Both pages render without "Attempt to read property on null" errors; country cell is blank or "—".
+- The detail page renders successfully and shows `—` in the PIC line.
+- The list row renders successfully and still shows the agreement.
 
 **Automated by**
-Pending — `BoundaryConditionsTest` to be written by Amir as a learning exercise.
+`BoundaryConditionsTest::test_null_pic_renders_as_em_dash_and_row_still_renders`
 
-**Status** Not yet executed
+**Status** Pass (27 Aug 2026)
 
 ---
 
@@ -969,14 +975,14 @@ Old and null timestamps return `true`; a recent timestamp returns `false`.
 
 ---
 
-### TC-039 — Staleness boundary at exactly 90 days is not stale
+### TC-039 — Staleness boundary at exactly STALE_AFTER_DAYS days
 
 | | |
 |---|---|
 | **Feature area** | Project Status & Staleness |
-| **Business rule** | BR-23 — `hasStaleProjectStatus()` uses strict `<` (DEF-006) |
+| **Business rule** | BR-23 — `hasStaleProjectStatus()` crosses the boundary at the start of the day (M5-8; DEF-008) |
 | **Priority** | Medium |
-| **Type** | Automated (boundary) — test to be added as learning exercise |
+| **Type** | Automated (boundary) |
 | **Preconditions** | None; derive days from `Agreement::STALE_AFTER_DAYS` |
 
 **Steps**
@@ -984,12 +990,12 @@ Old and null timestamps return `true`; a recent timestamp returns `false`.
 2. Call `hasStaleProjectStatus()` on each.
 
 **Expected result**
-89 days → `false`; exactly 90 days → `false`; 91 days → `true`.
+89 days → `false`; exactly 90 days → `true`; 91 days → `true`.
 
 **Automated by**
-Pending — `BoundaryConditionsTest` to be written by Amir as a learning exercise.
+`BoundaryConditionsTest::test_has_stale_project_status_is_true_past_the_boundary`
 
-**Status** Not yet executed
+**Status** Pass (27 Aug 2026)
 
 ---
 

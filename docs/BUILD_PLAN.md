@@ -46,44 +46,35 @@ This is a **work-hours project**. Build at the office. QA study evenings and job
 
 > Order is deliberate: auth before CRUD, because the one business rule that matters (Legal sees `pending`, others don't) can't exist without roles.
 
-### M0 — Boot locally (work PC: already working; home PC: needs toolchain)
-- [ ] PHP 8.3+ / Composer / Node installed (or Laravel Herd bundles all three), `composer setup` green.
-- [ ] `composer test` passes (stock tests only — expect the `laravel/pao` JSON output; parse it, don't re-run expecting pretty output).
+### M0 — Boot locally
+- [x] Toolchain installed; `composer setup` and `composer test` green.
 
 ### M1 — Auth + roles
-- [ ] Decide auth approach (Open Decision 1 below — Claude proposes, Amir approves).
-- [ ] Add `role` to `User::$fillable` (bug #1) + `is_active`; factory states for roles (bug #2).
-- [ ] Login page; logout; no public registration (admin creates users; PICs that don't log in are still selectable).
-- [ ] Role checks: `admin` (everything), `legal` (everything except user management), `viewer` (read-only).
-- [ ] Seed one admin + one legal dev account.
+- [x] Minimal custom auth; `role` + `is_active` on User; factory states; login/logout; role checks; dev admin + legal accounts.
 
 ### M2 — Agreement model + access rule
-- [ ] Relations: `partner()`, `campus()`, `pic()` (users), `files()`, `activities()`; casts for all date columns.
-- [ ] **Global scope: non-Legal users never see `document_status = pending`.** (The single most important rule in the system.)
-- [ ] Query scopes: `notArchived()` default, `expiringSoon()`, `expired()`, `status(...)`.
-- [ ] Archived ≠ deleted (soft deletes already on the table; archive logic comes later phase).
-- [ ] `CountrySeeder` (Malaysia + common partner countries, `is_domestic` correct) so partner forms have data.
+- [x] Relations, casts, global pending scope, archive/expiry scopes, `CountrySeeder`.
 
 ### M3 — Vertical slice: Register actually usable
-- [ ] Livewire 4 **single-file** components (`php artisan make:livewire ...` → `⚡`-prefixed file; do **not** scaffold `app/Livewire/*.php` by habit):
-  - `AgreementsIndex` — list + search + filters (campus / type / document_status / project_status) + pagination; role-aware (`pending` rows auto-hidden for viewers).
-  - `AgreementForm` — create + edit (field spec in §3 below).
-  - `AgreementShow` — detail view + status change + activity feed (read from `agreement_activities`).
-- [ ] Status change flow writes an `AgreementActivity` row (`status_changed` type, `meta` JSON with from→to) — the audit trail Legal needs.
-- [ ] **Stale-status flag (DECIDED — Decision 4):** badge on list/detail when `project_status_updated_at` is older than the threshold (>90 days, Ms. Haniza to confirm). Surface the lag; don't hide it.
-- [ ] Validation rules (field spec below), failures shown inline.
-- [ ] Boot to a page where a `legal` user can register an agreement end-to-end.
+- [x] Livewire 4 **single-file** components (`php artisan make:livewire ...` → `⚡`-prefixed file):
+  - `AgreementsIndex` — list + search + filters + pagination; role-aware.
+  - `AgreementForm` — create + edit.
+  - `AgreementShow` — detail view + status change + activity feed.
+- [x] Status change flow writes `AgreementActivity` rows with `meta` from→to.
+- [x] **Stale-status flag (Decision M5-8):** badge when `project_status_updated_at` is 90+ days old; boundary crossed at the start of the day.
+- [x] Validation rules, failures shown inline.
+- [x] Boot to a page where a `legal` user can register an agreement end-to-end.
 
 ### M4 — Tests that protect the business rule (QA portfolio evidence)
-- [ ] **Role-visibility test: viewer cannot see `pending` agreements; legal can.** (This test is the port of the rule.)
-- [ ] Create/update/status-change feature tests with factories (`AgreementFactory`, `PartnerFactory` — add `role` to `UserFactory` states). **Add `HasFactory` to `Agreement`/`Partner` only here, alongside their factories (Kimi convention).**
-- [ ] Validation failure tests.
-- [ ] `composer test` fully green.
+- [x] Role-visibility tests; create/update/status-change feature tests; factories; validation tests.
+- [x] `composer test` green at 115 tests.
 
-### M5 — Handover (do NOT skip; written as you go, not at the end)
-- [ ] Rewrite README: setup, roles explained, how to create users, how to run tests.
-- [ ] One-page handover note for Ms. Haniza / whichever colleague inherits it: what it does, how to get support, what's explicitly NOT built.
-- [ ] (Deferred) Excel import of 2022–2024 historical data — **only if explicitly requested**; it's a data-cleaning project, not a coding one.
+### M5 — Handover (in progress)
+- [x] README rewritten: setup, roles, user management, tests, out-of-scope items.
+- [x] `docs/HANDOVER.md` skeleton created for Intan; Amir writes the prose.
+- [x] M4/M5a QA artifact repair: defect log, traceability matrix, test cases; boundary tests E-5/E-6 added.
+- [ ] M5-2 admin-only user-creation web form — still open; documented as future work in `AGENTS.md` and `README.md`.
+- [ ] Excel import of 2022–2024 historical data — **only if explicitly requested**.
 
 ### 🚫 Explicitly OUT of MVP scope (phase-later, do not build now)
 File upload UI · dashboard analytics · archive/restore UX · notifications/reminders · CSV export · Excel import · approval workflow engine · spatie/laravel-permission.
@@ -112,13 +103,15 @@ File upload UI · dashboard analytics · archive/restore UX · notifications/rem
 
 ---
 
-## 4. Open decisions — status as of Amir's review (19 Aug 2026)
+## 4. Open decisions — status as of M5a (27 Aug 2026)
 
-1. **Auth approach — ✅ DECIDED: (b) minimal custom auth.** No Breeze. Login form + Laravel `auth` middleware + logout; `admin` creates users via an artisan command (`php artisan make:command` → `user:create`). Contract: use built-in `Auth` facade, never hand-rolled credentials; apply `throttle` rate-limiting on the login form. Do NOT plan around Breeze/registration/email-verification.
-2. **Who may create agreements?** *My lean: legal + admin create/edit; viewer strictly read-only.* Confirm with Claude.
-3. **Date validation strictness** on historical data (hard rule vs warning).
-4. **PIC project-status edits — ✅ DECIDED with visible-risk acceptance.** MVP: Legal updates project status on behalf — BUT the stale-status flag becomes part of the MVP (see M3): badge when `project_status_updated_at` is older than a threshold (>90 days, Ms. Haniza to confirm). Accepted risk: status can lag; the system surfaces it instead of hiding it. Phase 2 only if requested: lightweight PIC accounts with project-status-edit-only scope.
-5. **File uploads in MVP:** try to include or defer to phase 2? *My lean: defer — the spreadsheet workflow still owns files for now.*
+All open decisions from the original plan are now closed or superseded.
+
+1. **Auth approach — ✅ DECIDED: (b) minimal custom auth.** Login/logout via Laravel `auth`; `admin` creates users via `php artisan user:create`.
+2. **Who may create agreements? — ✅ DECIDED:** `admin` and `legal` create/edit; `viewer` is read-only.
+3. **Date validation strictness — ✅ DECIDED (Decision D3):** expiry earlier than effective date produces a soft warning, never blocks save.
+4. **PIC project-status edits / stale-status flag — ✅ DECIDED (Decision M5-8):** Legal updates project status on behalf; stale badge appears at 90 days, with the boundary crossed at the start of the day.
+5. **File uploads in MVP — ✅ DECIDED:** deferred; `agreement_files` table exists but has no UI.
 
 **Convention (agreed earlier with Kimi):** do NOT add `HasFactory` to a model until its factory actually exists. `Agreement`/`Partner` get `HasFactory` only in M4 alongside their factories — not before.
 

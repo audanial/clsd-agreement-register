@@ -1,58 +1,183 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# CLSD Agreement Register
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Internal UniKL system for tracking legal agreements (LOI, NDA, MOA, MOU, SEA, MOC, ADDENDUM) with partners, per campus.
 
-## About Laravel
+The register is used by Legal staff to record and monitor agreements, and by other UniKL staff to look them up. The single most important rule is: **agreements with `document_status = pending` are still in Legal vetting and are invisible to anyone who is not Legal or Admin.** This is enforced below every query, not in the UI layer.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Requirements
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.3+
+- Composer
+- Node.js 20+
+- SQLite extension enabled
 
-## Learning Laravel
+Or use [Laravel Herd](https://herd.laravel.com), which bundles all of the above.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+---
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Setup
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+1. Clone the repo.
+2. Run the first-time setup script:
 
-## Agentic Development
+   ```bash
+   composer setup
+   ```
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+   This installs PHP and JavaScript dependencies, creates `.env`, generates the application key, runs migrations, and builds the frontend assets.
+
+   **What `composer setup` does not do**
+
+   - It does **not** create `database/database.sqlite` if the file is missing. Create it by hand first:
+
+     ```bash
+     New-Item database\database.sqlite -ItemType File   # PowerShell
+     touch database/database.sqlite                     # Git Bash / WSL / macOS
+     ```
+
+   - It does **not** seed the database. On a development machine, run:
+
+     ```bash
+     php artisan db:seed
+     ```
+
+     This creates the default campuses, countries, and dev-only `admin`/`legal` accounts.
+
+   On any non-development environment, **do not run `db:seed`**. The seeders that create accounts are guarded to `local`/`testing` by design. Create the first account with:
+
+   ```bash
+   php artisan user:create --email=you@unikl.edu.my --role=admin
+   ```
+
+3. **Offline setup warning.** `composer setup` runs `npm run build`, which fetches the "Instrument Sans" font from Bunny Fonts over the network (`vite.config.js`). If you are offline, this step fails with an error that does not mention fonts. Connect to the internet for the first build.
+
+4. `.env.example` ships with `APP_NAME=Laravel`. Update `APP_NAME` in `.env` to something meaningful if you care what appears in the browser tab and emails.
+
+---
+
+## Running it
+
+Start the development environment:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer dev
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+This runs `php artisan serve`, `php artisan queue:listen`, and `npm run dev` in one terminal UI. The queue listener matters because `QUEUE_CONNECTION=database`; anything that dispatches a job will sit in the `jobs` table until the listener is running.
 
-## Contributing
+The app will be available at `http://localhost:8000`. Guests are redirected to `/login`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Dev accounts seeded by `DatabaseSeeder`:
 
-## Code of Conduct
+| Email | Role | Password |
+|---|---|---|
+| `admin@unikl.edu.my` | admin | `password` (or the value of `DEV_USER_PASSWORD`) |
+| `legal@unikl.edu.my` | legal | `password` (or the value of `DEV_USER_PASSWORD`) |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## Roles
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+| Role | Can do |
+|---|---|
+| **admin** | Everything, including creating and deactivating users. |
+| **legal** | Create, edit, and change the status of agreements. Sees `pending` agreements. Cannot manage users. |
+| **viewer** | Read only. Cannot see `pending` agreements or reach create/edit routes. |
 
-## License
+A **PIC** (project owner) is just a user, usually with the `viewer` role. They do **not** need to log in to appear in the agreement form's PIC dropdown; they only need an active user record.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+**Admin is granted on trust and system ownership, not on organisational rank.** Seniority is not, by itself, a reason to hold an admin account. The principle is recorded here so it survives any change of personnel.
+
+---
+
+## Managing users
+
+There is no user-management UI in this version. Add or reset users from the command line.
+
+Create a user:
+
+```bash
+php artisan user:create --email=someone@unikl.edu.my --role=viewer
+```
+
+The command interactively prompts for a name and password. Valid roles are `admin`, `legal`, and `viewer`.
+
+Reset a user's password:
+
+```bash
+php artisan user:password someone@unikl.edu.my
+```
+
+Both `UserSeeder` and `StaffSeeder` are guarded to `local`/`testing` environments. On production or staging, `user:create` is the only way to create the first account.
+
+---
+
+## Running the tests
+
+```bash
+composer test
+```
+
+This clears the config cache and runs PHPUnit. Because `laravel/pao` is installed, the output is compact JSON when an AI agent runs it:
+
+```json
+{"tool":"phpunit","result":"passed","tests":117,"passed":117,...}
+```
+
+Parse the `result` field. If it says `passed`, the suite is green. Human-run PHPUnit shows normal pretty output; the acceptance criterion is the same.
+
+Format PHP changes:
+
+```bash
+vendor\bin\pint
+```
+
+---
+
+## How the code is laid out
+
+- `app/Models/` — Eloquent models. `Agreement` carries the `HidePendingFromNonLegalScope` global scope, which is the core access rule.
+- `app/Actions/` — Small invokable classes shared by multiple entry points (e.g., activity logging).
+- `resources/views/components/⚡*.blade.php` — **Livewire 4 single-file components.** The filename starts with a literal `⚡` emoji. These are anonymous classes with the Blade template in the same file. `php artisan make:livewire Foo` creates `resources/views/components/⚡foo.blade.php`. Do not expect `app/Livewire/Foo.php`.
+- `resources/views/components/badges/` — Plain Blade anonymous components for status badges.
+- `routes/web.php` — Routes grouped by middleware; Livewire full-page components are registered with `Route::livewire(...)`.
+- `database/migrations/` — Schema. The `2026_*` migrations contain comments that explain business rules; treat them as the design doc.
+- `database/seeders/` — Seeders. `CampusSeeder` and `CountrySeeder` are unguarded and run through `DatabaseSeeder`; `UserSeeder` and `StaffSeeder` are dev-only.
+- `tests/Feature/` — Feature tests, organised by area. Every feature test class uses `RefreshDatabase`.
+- `docs/` — Architecture plans, handoffs, QA artifacts, and the non-technical handover note.
+
+---
+
+## Where the documents live
+
+| File | What it is |
+|---|---|
+| `AGENTS.md` | Agent-facing conventions, domain rules, and design philosophy. Read this first if you are working on the code. |
+| `docs/BUILD_PLAN.md` | Original MVP milestone plan and field-level form spec. |
+| `docs/architecture-plan.md` | Approved architecture for M1 + M2. |
+| `docs/architecture-plan-m3.md` | Approved architecture for M3 (vertical slice). |
+| `docs/architecture-plan-m4.md` | Approved architecture for M4 (QA portfolio evidence). |
+| `docs/architecture-plan-m5.md` | Approved architecture for M5 (handover). |
+| `docs/qa/` | Test plan, test cases, defect log, and traceability matrix. |
+| `docs/HANDOVER.md` | One-page note for the Legal system owner (Intan). Skeleton with headings; Amir writes the prose. |
+
+---
+
+## What is deliberately not built
+
+These are out of scope for the MVP, not oversights:
+
+- **File upload UI.** The `agreement_files` table exists, but there is no UI for attaching documents.
+- **Excel / CSV import or export.** Historical data will be entered by hand in M5 rather than imported from a spreadsheet nobody has reviewed.
+- **Dashboard analytics.** No charts, reports, or statistics screens.
+- **Archive / restore UX.** Archiving is a data state (`archived_at`); there is no dedicated archive workflow.
+- **Email / password reset flows.** Password resets are handled by the `user:password` artisan command.
+- **Approval workflow engine.** The workflow is tracked by nullable date columns on `agreements`.
+- **`spatie/laravel-permission`.** The three-role enum is sufficient.
+
+Known limitations that may bite users:
+
+- The similar-partner warning uses substring matching. It will miss acronym-vs-full-name pairs such as "UiTM" vs "Universiti Teknologi MARA".
+- Concurrent edits are unguarded. Two users editing the same agreement at the same time will overwrite each other; last write wins.

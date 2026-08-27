@@ -9,6 +9,77 @@
 
 ---
 
+## DEF-010 — `similarPartners()` has no boundary tests for minimum query length
+
+| | |
+|---|---|
+| **Reported by** | M5 handoff review |
+| **Date found** | 27 Aug 2026 |
+| **Component** | `app/Models/Agreement.php` — `similarPartners()` |
+| **Severity** | Minor |
+| **Priority** | Low |
+| **Status** | Closed |
+
+**Description**
+`similarPartners()` returns an empty collection for inputs under three characters and performs a `LOWER(name) like '%...%'` search once the input reaches three characters. The suite had no automated test proving the boundary at two and three characters, so a future change could silently start querying at one or two characters.
+
+**Steps to reproduce**
+1. Call `Agreement::similarPartners('u')`.
+2. Call `Agreement::similarPartners('ui')`.
+3. Call `Agreement::similarPartners('uit')`.
+
+**Expected**
+Inputs under three characters return empty; the three-character input returns matching partners.
+
+**Actual**
+Behaviour was correct but untested.
+
+**Root cause**
+Missing boundary test for the minimum-query-length surface.
+
+**Fix**
+Added `BoundaryConditionsTest::test_similar_partners_returns_empty_for_short_input` covering one-, two-, and three-character inputs.
+
+**Verification**
+The test passes and fails if the minimum-length guard is removed. `composer test` green.
+
+---
+
+## DEF-009 — Null `pic_user_id` has no render test
+
+| | |
+|---|---|
+| **Reported by** | M5 handoff review |
+| **Date found** | 27 Aug 2026 |
+| **Component** | `resources/views/components/⚡agreement-show.blade.php`, list row |
+| **Severity** | Minor |
+| **Priority** | Low |
+| **Status** | Closed |
+
+**Description**
+An agreement may have no PIC assigned (`pic_user_id = null`). The detail page renders the PIC as `—`, and the list row still renders. No test asserted either behaviour.
+
+**Steps to reproduce**
+1. Create an agreement with `pic_user_id = null`.
+2. Render the detail page and the list page as a legal user.
+
+**Expected**
+Both pages render successfully and the detail page shows `—` in the PIC line.
+
+**Actual**
+Behaviour was correct but untested.
+
+**Root cause**
+Missing render test for a nullable belongs-to relation.
+
+**Fix**
+Added `BoundaryConditionsTest::test_null_pic_renders_as_em_dash_and_row_still_renders`. Per Decision M5-5, the test focuses on `pic_user_id`; `country_id` is not exercised because the country relation is not rendered in the current UI.
+
+**Verification**
+The test fails if the placeholder is removed from the detail template and passes with the current implementation. `composer test` green.
+
+---
+
 ## DEF-008 — `hasStaleProjectStatus()` treats exactly 90 days as stale, not just 91+
 
 | | |
@@ -83,7 +154,7 @@ green at 115.
 | **Component** | Agreement edit / status-change flows |
 | **Severity** | Minor |
 | **Priority** | Low |
-| **Status** | Accepted — deferred |
+| **Status** | Deferred |
 
 **Description**
 Two users editing the same agreement can overwrite each other's changes. The activity log records a `from` value that the second user may never have seen on screen. There is no optimistic locking or timestamp check.
@@ -104,7 +175,7 @@ The second save succeeds and overwrites the first.
 No concurrency-control mechanism exists. Adding one requires a schema change (e.g., `lock_version` integer or `updated_at` compare-and-set), which M4 is barred from making.
 
 **Fix / disposition**
-Deferred to M5. Recommended fix: optimistic locking with a `lock_version` column on `agreements` and a hidden field in the edit form. The risk is accepted because the user base is a single small internal team and the edit collision window is minutes per year.
+Deferred to M5. Re-deferred in the M5 handoff (27 Aug 2026). Recommended fix: optimistic locking with a `lock_version` column on `agreements` and a hidden field in the edit form. The risk is accepted because the user base is a single small internal team and the edit collision window is minutes per year.
 
 **Verification**
 Documented as an accepted risk. No automated test added because the fix is deferred; the gap is recorded in `traceability-matrix.md` (BR-25) and the test-plan risk register.
@@ -120,16 +191,16 @@ Documented as an accepted risk. No automated test added because the fix is defer
 | **Component** | `Agreement::hasStaleProjectStatus()` |
 | **Severity** | Minor |
 | **Priority** | Medium |
-| **Status** | Closed |
+| **Status** | Closed — superseded by DEF-008 |
 
 **Description**
-`hasStaleProjectStatus()` uses a strict less-than comparison against `now()->subDays(STALE_AFTER_DAYS)`. Exactly `STALE_AFTER_DAYS` days is therefore **not** stale. The suite had no tests at 89, 90, or 91 days, so a change to the constant or a drift from strict to non-strict comparison would not be caught.
+This defect was originally filed assuming that exactly `STALE_AFTER_DAYS` days should **not** be stale and that the boundary test should enforce 89-not-stale / 90-not-stale / 91-stale.
 
 **Steps to reproduce**
 1. Create an agreement with `project_status_updated_at` exactly `STALE_AFTER_DAYS` days ago.
 2. Render the agreement list or detail page.
 
-**Expected**
+**Expected (original filing)**
 The stale badge is **not** shown at exactly 90 days; it **is** shown at 91 days.
 
 **Actual**
@@ -138,11 +209,11 @@ Behaviour was correct but untested.
 **Root cause**
 Missing boundary test for the off-by-one surface.
 
-**Fix**
-Added `BoundaryConditionsTest::test_staleness_boundary_at_ninety_days_is_not_stale` covering 89, 90, and 91 days, deriving the threshold from `Agreement::STALE_AFTER_DAYS`.
+**Fix / disposition**
+Superseded by DEF-008. Decision M5-8 (26 Aug 2026) changed the boundary rule: a boundary date is crossed at the **start** of that day, so exactly 90 days without an update is already stale. The boundary test originally planned here was replaced by `BoundaryConditionsTest::test_has_stale_project_status_is_true_past_the_boundary`, which asserts 89-not-stale / 90-stale / 91-stale.
 
 **Verification**
-`composer test` green; the test fails if the comparison is changed to `lte` or if the constant is moved.
+See DEF-008. `composer test` green.
 
 ---
 
@@ -235,7 +306,7 @@ Confirmed the corrected test fails when the badge is removed from the template a
 | **Component** | Partner quick-create, `⚡agreement-form.blade.php` similar-partner warning |
 | **Severity** | Major |
 | **Priority** | Medium |
-| **Status** | Accepted — deferred |
+| **Status** | Deferred |
 
 **Description**
 Decision M3-4 rejected exact-match dedup because it *"misses 'UiTM' vs 'Universiti Teknologi MARA', which is the duplicate that actually happens in this register."* The implementation uses substring matching (`LOWER(name) like '%{input}%'`). That also misses the exact case it was chosen for: `%uitm%` does not match "universiti teknologi mara" in either direction.
@@ -255,7 +326,7 @@ No warning is shown.
 Substring matching is insufficient for acronym/token overlap. The fix requires acronym matching, token normalisation, or a curated alias list.
 
 **Fix / disposition**
-Deferred to M5. This is feature work, and the current substring matching is still an improvement over no warning at all. A characterisation test (`AgreementFormTest::test_acronym_partner_name_does_not_trigger_similar_warning`) pins the current behaviour and will fail loudly when M5 improves the matcher — which is the signal it exists to give.
+Deferred to M5. Re-deferred in the M5 handoff (27 Aug 2026). This is feature work, and the current substring matching is still an improvement over no warning at all. A characterisation test (`AgreementFormTest::test_acronym_partner_name_does_not_trigger_similar_warning`) pins the current behaviour and will fail loudly when M5 improves the matcher — which is the signal it exists to give.
 
 **Verification**
 Characterisation test passes against current code. The test body references this defect and states that it is expected to fail if the matcher is improved.

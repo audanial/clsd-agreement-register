@@ -72,7 +72,7 @@ Manual cases are marked **Manual only** in `test-cases.md` with the reason state
 ## 4. Entry criteria
 
 - M1, M2 and M3 code is merged.
-- `composer test` is green at 111 tests.
+- `composer test` is green at 115 tests.
 - `vendor\bin\pint` is clean on the existing codebase.
 
 ---
@@ -82,7 +82,7 @@ Manual cases are marked **Manual only** in `test-cases.md` with the reason state
 - Every business rule in `traceability-matrix.md` maps to at least one executed test case or an explicitly documented gap.
 - Every automated test named in the matrix and test-case document exists and is spelled correctly.
 - All defects in `defect-log.md` have a severity, root cause, and disposition (`Closed`, `Deferred`, or `Accepted`).
-- `composer test` is green at approximately 119 tests.
+- `composer test` is green at 117 tests.
 - `git status` shows no modified application files (`app/`, `database/migrations/`, `database/seeders/`, `resources/views/`, `routes/`).
 
 ---
@@ -93,8 +93,8 @@ Manual cases are marked **Manual only** in `test-cases.md` with the reason state
 |---|---|
 | Amir (PM) | Approves plans, decides on defects and scope, signs off exit criteria. |
 | Claude Code (Lead Architect) | Wrote the M4 plan; defines business rules and traceability expectations. |
-| OpenCode Go (Senior Dev) | Implements M4: creates QA artifacts, corrects/adds tests, keeps suite green. |
-| Ms. Haniza / Legal (Future user) | Will confirm business thresholds (stale days, expiry semantics) in M5; not a test executor in M4. |
+| OpenCode Go (Senior Dev) | Implements M4 and M5a: creates QA artifacts, corrects/adds tests, keeps suite green. |
+| Intan / Legal (System owner) | Confirmed business thresholds (stale days, expiry semantics) in M5-8; will operate the system after handover. |
 
 ---
 
