@@ -336,6 +336,37 @@ class AgreementFormTest extends TestCase
             ->assertDontSee('Universiti Teknologi MARA');
     }
 
+    public function test_partner_mode_radios_are_live_bound(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreement-form')->html();
+
+        $this->assertSame(2, substr_count($html, 'wire:model.live="partnerMode"'));
+        $this->assertStringNotContainsString('wire:model="partnerMode"', $html);
+    }
+
+    public function test_switching_to_new_partner_mode_reveals_the_partner_name_fields(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form')
+            ->set('partnerMode', 'new')
+            ->assertSeeHtml('placeholder="Partner legal name"')
+            ->assertSeeHtml('placeholder="Short name (optional)"');
+    }
+
+    public function test_switching_back_to_existing_restores_the_partner_dropdown(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form')
+            ->set('partnerMode', 'new')
+            ->set('partnerMode', 'existing')
+            ->assertSeeHtml('<select wire:model="partner_id"')
+            ->assertDontSeeHtml('placeholder="Partner legal name"');
+    }
+
     public function test_legal_can_edit_an_existing_agreement(): void
     {
         $agreement = Agreement::factory()->create(['title' => 'Old Title']);

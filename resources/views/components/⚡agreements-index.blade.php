@@ -2,6 +2,7 @@
 
 use App\Models\Agreement;
 use App\Models\Campus;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -170,12 +171,13 @@ new class extends Component
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Title</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Type</th>
                     <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Partner</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Campus</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Duration</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Scope</th>
                     <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
                     <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Project</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Expiry</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">PIC</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Campus</th>
                     <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500"></th>
                 </tr>
             </thead>
@@ -183,9 +185,11 @@ new class extends Component
                 @forelse ($this->agreements as $agreement)
                     <tr>
                         <td class="px-4 py-3 text-sm font-medium">{{ $agreement->title }}</td>
-                        <td class="px-4 py-3 text-sm">{{ $agreement->type }}</td>
                         <td class="px-4 py-3 text-sm">{{ $agreement->partner?->name }}</td>
-                        <td class="px-4 py-3 text-sm">{{ $agreement->campus?->code }}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <x-agreement-duration :agreement="$agreement" />
+                        </td>
+                        <td class="px-4 py-3 text-sm" title="{{ $agreement->scope ?? '' }}">{{ $agreement->scope ? Str::limit($agreement->scope, 80) : '—' }}</td>
                         <td class="px-4 py-3 text-sm">
                             <x-badges.document-status :status="$agreement->document_status" />
                         </td>
@@ -197,16 +201,15 @@ new class extends Component
                                 @endif
                             </div>
                         </td>
-                        <td class="px-4 py-3 text-sm">
-                            {{ $agreement->isIndefinite() ? 'Indefinite' : $agreement->expiry_date->format('d M Y') }}
-                        </td>
+                        <td class="px-4 py-3 text-sm">{{ $agreement->pic_name ?? '—' }}</td>
+                        <td class="px-4 py-3 text-sm">{{ $agreement->campus?->code }}</td>
                         <td class="px-4 py-3 text-sm">
                             <a href="{{ route('agreements.show', $agreement) }}" class="text-indigo-600 hover:text-indigo-900">View</a>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="px-4 py-6 text-center text-sm text-gray-500">No agreements found.</td>
+                        <td colspan="9" class="px-4 py-6 text-center text-sm text-gray-500">No agreements found.</td>
                     </tr>
                 @endforelse
             </tbody>

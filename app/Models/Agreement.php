@@ -111,6 +111,46 @@ class Agreement extends Model
         );
     }
 
+    public function durationInMonths(): ?int
+    {
+        if ($this->agreement_date === null || $this->expiry_date === null) {
+            return null;
+        }
+
+        if ($this->expiry_date->lt($this->agreement_date)) {
+            return null;
+        }
+
+        return abs($this->agreement_date->diffInMonths($this->expiry_date));
+    }
+
+    public function durationLabel(): ?string
+    {
+        $months = $this->durationInMonths();
+
+        if ($months === null) {
+            return null;
+        }
+
+        if ($months === 0) {
+            return 'less than a month';
+        }
+
+        $years = intdiv($months, 12);
+        $remainingMonths = $months % 12;
+
+        if ($years > 0 && $remainingMonths > 0) {
+            return ($years === 1 ? '1 year' : $years.' years').', '
+                .($remainingMonths === 1 ? '1 month' : $remainingMonths.' months');
+        }
+
+        if ($years > 0) {
+            return $years === 1 ? '1 year' : $years.' years';
+        }
+
+        return $remainingMonths === 1 ? '1 month' : $remainingMonths.' months';
+    }
+
     public function isIndefinite(): bool
     {
         return is_null($this->expiry_date);

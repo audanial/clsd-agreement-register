@@ -6,6 +6,7 @@ use App\Models\Agreement;
 use App\Models\Campus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -194,5 +195,136 @@ class AgreementsIndexTest extends TestCase
         Livewire::test('agreements-index')
             ->assertSeeHtml('<span class="font-medium">18</span>')
             ->assertDontSeeHtml('<span class="font-medium">21</span>');
+    }
+
+    public function test_type_column_is_not_rendered_in_the_list(): void
+    {
+        Agreement::factory()->signed()->create(['title' => 'Type Column Test']);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreements-index')->html();
+
+        $this->assertStringNotContainsString('>Type</th>', $html);
+        $this->assertStringContainsString('Type</label>', $html);
+    }
+
+    public function test_columns_render_in_the_agreed_order(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreements-index')->html();
+
+        preg_match_all('/<th[^>]*>(.*?)<\/th>/i', $html, $matches);
+
+        $headers = array_map('trim', array_map('strip_tags', $matches[1]));
+
+        $this->assertSame(
+            ['Title', 'Partner', 'Duration', 'Scope', 'Status', 'Project', 'PIC', 'Campus', ''],
+            $headers
+        );
+    }
+
+    public function test_scope_is_truncated_in_the_list(): void
+    {
+        $scope = str_repeat('a', 100);
+
+        $agreement = Agreement::factory()->signed()->create([
+            'title' => 'Scope Truncation Test',
+            'scope' => $scope,
+        ]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreements-index')->html();
+
+        $this->assertStringContainsString(Str::limit($scope, 80), $html);
+        $this->assertSame(1, substr_count($html, $scope));
+        $this->assertStringContainsString('title="'.$scope.'"', $html);
+    }
+
+    public function test_full_scope_remains_available_on_the_detail_page(): void
+    {
+        $scope = str_repeat('b', 100);
+
+        $agreement = Agreement::factory()->signed()->create([
+            'title' => 'Full Scope Detail Test',
+            'scope' => $scope,
+        ]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $this->get(route('agreements.show', $agreement))
+            ->assertOk()
+            ->assertSee($scope);
+    }
+
+    public function test_null_scope_renders_as_a_dash(): void
+    {
+        Agreement::factory()->signed()->create([
+            'title' => 'Null Scope Test',
+            'scope' => null,
+            'pic_name' => 'Ahmad bin Osman',
+            'agreement_date' => '2024-08-12',
+            'expiry_date' => '2027-08-12',
+        ]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreements-index')->html();
+
+        $this->assertStringContainsString('<td class="px-4 py-3 text-sm" title="">—</td>', $html);
+    }
+
+    public function test_pic_column_shows_the_pic_name_and_a_dash_when_unset(): void
+    {
+        Agreement::factory()->signed()->create([
+            'title' => 'With PIC',
+            'pic_name' => 'Ahmad bin Osman',
+            'scope' => 'Some scope text',
+            'agreement_date' => '2024-08-12',
+            'expiry_date' => '2027-08-12',
+        ]);
+
+        Agreement::factory()->signed()->create([
+            'title' => 'Without PIC',
+            'pic_name' => null,
+            'scope' => 'Some scope text',
+            'agreement_date' => '2024-08-12',
+            'expiry_date' => '2027-08-12',
+        ]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreements-index')->html();
+
+        $this->assertStringContainsString('Ahmad bin Osman', $html);
+        $this->assertStringContainsString('With PIC', $html);
+        $this->assertStringContainsString('Without PIC', $html);
+
+        $tableBody = strstr($html, '<tbody');
+        $this->assertSame(1, substr_count($tableBody, '—'));
+    }
+
+    public function test_search_still_matches_title_and_partner_only(): void
+    {
+        $titleMatch = Agreement::factory()->signed()->create(['title' => 'Alpha Title Match']);
+        $titleMatch->partner->update(['name' => 'BetaCorp']);
+
+        $partnerMatch = Agreement::factory()->signed()->create(['title' => 'Delta Title']);
+        $partnerMatch->partner->update(['name' => 'AlphaCorp']);
+
+        $scopeMatch = Agreement::factory()->signed()->create([
+            'title' => 'Zeta Title',
+            'scope' => 'Alpha appears only in the scope',
+        ]);
+        $scopeMatch->partner->update(['name' => 'EtaCorp']);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreements-index', ['search' => 'Alpha'])
+            ->assertSee('Alpha Title Match')
+            ->assertSee('Delta Title')
+            ->assertDontSee('Zeta Title');
     }
 }

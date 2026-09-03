@@ -59,6 +59,8 @@ A couple of small things to be aware of — these are known, not something you d
 
 - **If two people edit the same agreement at the exact same time**, the person who saves last will overwrite the other person's changes without a warning. This is rare in practice, but worth keeping in mind — try to avoid editing the same agreement as someone else at the same time.
 
+- **Date boxes may show the day and month in a different order depending on your browser or computer settings.** This is a browser behaviour, not a bug in the system, and it cannot be changed from the web page. The line under each date box always shows the date you picked in a clear format like “18 Mar 2022”, so you can check it before saving.
+
 ## When something looks wrong
 
 While Amir is with the Legal Unit, reach out to him directly first.

@@ -9,6 +9,41 @@
 
 ---
 
+## DEF-011 — Partner-mode radios are not live bound, so new-partner fields do not appear inline
+
+| | |
+|---|---|
+| **Reported by** | M6 post-deployment review |
+| **Date found** | 2 Sep 2026 |
+| **Component** | `resources/views/components/⚡agreement-form.blade.php` — partner-mode radios |
+| **Severity** | Major |
+| **Priority** | High |
+| **Status** | Closed |
+
+**Description**
+Both partner-mode radios were bound with `wire:model="partnerMode"` (no modifier). Livewire 4 treats this as a deferred update: selecting the radio changes client-side state only, with no network request. Because the new-partner fields are revealed by a server-rendered `@if ($partnerMode === 'existing')`, the server never re-rendered and the fields never appeared until the next network request (form submit), which then failed validation and only then showed the fields already carrying an error.
+
+**Steps to reproduce**
+1. Open the agreement create form.
+2. Select “New partner”.
+
+**Expected**
+The new-partner name fields appear immediately.
+
+**Actual**
+Nothing appears until the form is submitted and validation fails.
+
+**Root cause**
+`wire:model` without a modifier does not send a network request on change in Livewire 4; the server-rendered conditional never re-evaluated.
+
+**Fix**
+Changed both radios to `wire:model.live="partnerMode"`.
+
+**Verification**
+`AgreementFormTest::test_partner_mode_radios_are_live_bound` asserts the directive in rendered markup (not just behaviour through the test harness, which always performs a round trip and would pass even on the broken version). `composer test` green.
+
+---
+
 ## DEF-010 — `similarPartners()` has no boundary tests for minimum query length
 
 | | |

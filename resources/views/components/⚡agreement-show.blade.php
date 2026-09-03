@@ -107,20 +107,15 @@ new class extends Component
 
             <div>
                 <dt class="text-sm font-medium text-gray-500">Date Signed</dt>
-                <dd class="mt-1 text-sm">{{ $agreement->agreement_date?->format('d M Y') ?? '—' }}</dd>
+                <dd class="mt-1 text-sm">
+                    <x-date :value="$agreement->agreement_date" />
+                </dd>
             </div>
 
             <div>
-                <dt class="text-sm font-medium text-gray-500">Expiry</dt>
+                <dt class="text-sm font-medium text-gray-500">Duration</dt>
                 <dd class="mt-1 text-sm">
-                    @if ($agreement->isIndefinite())
-                        Indefinite
-                    @else
-                        {{ $agreement->expiry_date->format('d M Y') }}
-                        @if ($agreement->isExpired())
-                            <span class="ml-2 text-red-600">(expired)</span>
-                        @endif
-                    @endif
+                    <x-agreement-duration :agreement="$agreement" />
                 </dd>
             </div>
 

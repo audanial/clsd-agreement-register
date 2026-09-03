@@ -185,3 +185,4 @@ Known limitations that may bite users:
 
 - The similar-partner warning uses substring matching. It will miss acronym-vs-full-name pairs such as "UiTM" vs "Universiti Teknologi MARA".
 - Concurrent edits are unguarded. Two users editing the same agreement at the same time will overwrite each other; last write wins.
+- Date inputs use the browser's native date picker, which displays dates in your browser/OS locale (for example, MM/DD/YYYY on some machines). This cannot be overridden by web code. The value stored is always `YYYY-MM-DD`, and the text beneath each input confirms the selected date as `18 Mar 2022` so it can be read unambiguously.

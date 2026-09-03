@@ -1638,3 +1638,148 @@ Login is rejected with the generic `auth.failed` message.
 `AgreementCastsTest::test_agreement_factory_does_not_reference_effective_date`
 
 **Status** Pass (3 Sep 2026)
+
+---
+
+## 14. M6-1 — List view column changes
+
+### TC-064 — List columns render in the agreed order with Type removed, scope truncated, PIC rendered, and search unchanged
+
+| | |
+|---|---|
+| **Feature area** | List, Search & Filtering |
+| **Business rule** | BR-27 — The list shows Title, Partner, Duration, Scope, Status, Project, PIC, Campus, and the action column; the Type column is removed but the Type filter remains |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | Authenticated user; agreements with and without PIC/scope exist |
+
+**Steps**
+1. Render the agreements index.
+2. Inspect the table header order.
+3. Inspect the Type filter in the filter bar.
+4. Inspect the Scope cell and its `title` attribute.
+5. Inspect the PIC column.
+6. Search for a term that appears in a title, a partner name, and only a scope.
+
+**Expected result**
+- Header order is Title, Partner, Duration, Scope, Status, Project, PIC, Campus, then the action column.
+- No Type column appears in the table; the Type filter still appears above the table.
+- Scope is truncated to 80 characters in the list, with the full text available on hover and on the detail page; null scope renders `—`.
+- PIC renders `pic_name`, or `—` when unset.
+- Search still matches title and partner name only; scope-only matches are not returned.
+
+**Automated by**
+`AgreementsIndexTest::test_type_column_is_not_rendered_in_the_list`  
+`AgreementsIndexTest::test_columns_render_in_the_agreed_order`  
+`AgreementsIndexTest::test_scope_is_truncated_in_the_list`  
+`AgreementsIndexTest::test_full_scope_remains_available_on_the_detail_page`  
+`AgreementsIndexTest::test_null_scope_renders_as_a_dash`  
+`AgreementsIndexTest::test_pic_column_shows_the_pic_name_and_a_dash_when_unset`  
+`AgreementsIndexTest::test_search_still_matches_title_and_partner_only`
+
+**Status** Pass (3 Sep 2026)
+
+---
+
+## 15. M6-2 — Duration column format
+
+### TC-065 — Duration renders the date range and an exact year/month count
+
+| | |
+|---|---|
+| **Feature area** | Dates & Expiry Semantics |
+| **Business rule** | BR-28 — Duration shows the Date Signed–expiry range and an exact, never-rounded year/month count |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | Agreements with whole-year, partial-year, sub-year, and sub-month durations exist |
+
+**Steps**
+1. Inspect `durationInMonths()` and `durationLabel()` on each agreement.
+2. Render the duration component.
+
+**Expected result**
+- Whole-year durations render as `(N years)`.
+- Partial-year durations render as `(N years, M months)`.
+- Sub-year durations render as `(M months)`.
+- Sub-month durations render as `(less than a month)`.
+- Null expiry renders `Indefinite` with no count.
+- Null start date renders `— – <expiry>` with no count.
+- Expiry before start renders the stored range with no count.
+- Leap-year boundaries are handled correctly.
+
+**Automated by**
+`AgreementDurationTest::test_whole_year_duration_renders_as_years`  
+`AgreementDurationTest::test_partial_year_duration_renders_years_and_months`  
+`AgreementDurationTest::test_sub_year_duration_renders_months_only`  
+`AgreementDurationTest::test_sub_month_duration_renders_less_than_a_month`  
+`AgreementDurationTest::test_null_expiry_yields_no_duration_and_stays_indefinite`  
+`AgreementDurationTest::test_null_start_date_yields_no_duration`  
+`AgreementDurationTest::test_expiry_before_start_does_not_produce_a_negative_duration`  
+`AgreementDurationTest::test_leap_year_boundary_is_handled`
+
+**Status** Pass (3 Sep 2026)
+
+---
+
+## 16. M6-3 — Partner-mode live binding
+
+### TC-066 — Partner-mode radios are live bound and switch the form inline
+
+| | |
+|---|---|
+| **Feature area** | Agreement Creation & Validation |
+| **Business rule** | BR-29 — Conditional form sections driven by a server-rendered `@if` must be bound with `wire:model.live` |
+| **Priority** | Critical |
+| **Type** | Automated |
+| **Preconditions** | A legal user is logged in |
+
+**Steps**
+1. Inspect the rendered markup for the partner-mode radios.
+2. Switch to New partner.
+3. Switch back to Existing partner.
+
+**Expected result**
+- Both radios are bound with `wire:model.live="partnerMode"`.
+- Switching to New partner reveals the partner name fields immediately.
+- Switching back restores the partner dropdown.
+
+**Automated by**
+`AgreementFormTest::test_partner_mode_radios_are_live_bound`  
+`AgreementFormTest::test_switching_to_new_partner_mode_reveals_the_partner_name_fields`  
+`AgreementFormTest::test_switching_back_to_existing_restores_the_partner_dropdown`
+
+**Status** Pass (3 Sep 2026)
+
+---
+
+## 17. M6-6 — Date formatting
+
+### TC-069 — Date component renders d M Y and inputs carry a DD/MM/YYYY hint
+
+| | |
+|---|---|
+| **Feature area** | Dates & Expiry Semantics |
+| **Business rule** | BR-32 — Every date renders as `d M Y`; date inputs carry a `(DD/MM/YYYY)` hint and a confirmation line |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | None |
+
+**Steps**
+1. Render the date component with a date and with null.
+2. Inspect all view files for month-first formats.
+3. Render the agreement form and inspect the date inputs.
+
+**Expected result**
+- The component renders `18 Mar 2022` for a date and `—` for null.
+- No view contains a month-first date format.
+- Both date inputs carry the `(DD/MM/YYYY)` hint.
+- The inputs still use the `Y-m-d` wire format.
+
+**Automated by**
+`DateFormattingTest::test_the_date_component_renders_day_month_year`  
+`DateFormattingTest::test_the_date_component_renders_a_dash_for_null`  
+`DateFormattingTest::test_no_view_renders_a_month_first_date_format`  
+`DateFormattingTest::test_date_inputs_carry_a_dd_mm_yyyy_hint`  
+`DateFormattingTest::test_form_date_inputs_still_use_the_y_m_d_wire_format`
+
+**Status** Pass (3 Sep 2026)

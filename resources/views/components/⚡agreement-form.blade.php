@@ -263,11 +263,11 @@ new class extends Component
             <label class="block text-sm font-medium">Partner</label>
             <div class="mt-2 flex gap-4 text-sm">
                 <label class="flex items-center gap-2">
-                    <input wire:model="partnerMode" type="radio" value="existing" class="rounded border-gray-300">
+                    <input wire:model.live="partnerMode" type="radio" value="existing" class="rounded border-gray-300">
                     Existing partner
                 </label>
                 <label class="flex items-center gap-2">
-                    <input wire:model="partnerMode" type="radio" value="new" class="rounded border-gray-300">
+                    <input wire:model.live="partnerMode" type="radio" value="new" class="rounded border-gray-300">
                     New partner
                 </label>
             </div>
@@ -349,15 +349,21 @@ new class extends Component
 
         <div class="grid gap-6 md:grid-cols-2">
             <div>
-                <label class="block text-sm font-medium">Date Signed</label>
+                <label class="block text-sm font-medium">Date Signed (DD/MM/YYYY)</label>
                 <input wire:model="agreement_date" type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                 @error('agreement_date') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                <p class="mt-1 text-sm text-gray-500">
+                    You selected: <x-date :value="$agreement_date" />
+                </p>
             </div>
 
             <div>
-                <label class="block text-sm font-medium">Expiry date</label>
+                <label class="block text-sm font-medium">Expiry date (DD/MM/YYYY)</label>
                 <input wire:model="expiry_date" type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                 @error('expiry_date') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                <p class="mt-1 text-sm text-gray-500">
+                    You selected: <x-date :value="$expiry_date" />
+                </p>
                 @if ($this->dateWarning)
                     <p class="mt-1 text-sm text-amber-700">{{ $this->dateWarning }}</p>
                 @endif
