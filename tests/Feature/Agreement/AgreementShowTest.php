@@ -66,6 +66,21 @@ class AgreementShowTest extends TestCase
             ->assertSee('—');
     }
 
+    public function test_detail_page_shows_one_date_signed_row(): void
+    {
+        $agreement = Agreement::factory()->signed()->create(['agreement_date' => '2024-08-12']);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $response = $this->get(route('agreements.show', $agreement));
+
+        $response->assertOk();
+        $this->assertStringContainsString('Date Signed', $response->content());
+        $this->assertStringContainsString('12 Aug 2024', $response->content());
+        $this->assertStringNotContainsString('Effective date', $response->content());
+        $this->assertStringNotContainsString('Agreement date', $response->content());
+    }
+
     public function test_activity_feed_renders_newest_first(): void
     {
         $agreement = Agreement::factory()->signed()->create();

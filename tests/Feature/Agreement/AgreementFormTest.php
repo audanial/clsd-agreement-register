@@ -111,7 +111,7 @@ class AgreementFormTest extends TestCase
             ->assertHasErrors(['document_status']);
     }
 
-    public function test_expiry_before_effective_shows_a_warning_but_still_saves(): void
+    public function test_expiry_before_date_signed_warns_but_still_saves(): void
     {
         $partner = Partner::factory()->create();
         $campus = Campus::active()->first();
@@ -124,15 +124,15 @@ class AgreementFormTest extends TestCase
             ->set('partnerMode', 'existing')
             ->set('partner_id', $partner->id)
             ->set('campus_id', $campus->id)
-            ->set('effective_date', '2026-01-15')
+            ->set('agreement_date', '2026-01-15')
             ->set('expiry_date', '2026-01-01')
             ->set('document_status', 'pending')
             ->set('project_status', 'not_started')
             ->assertSet(
                 'dateWarning',
-                'Expiry date is earlier than the effective date. Save anyway if that matches the document.'
+                'Expiry date is earlier than the date signed. Save anyway if that matches the document.'
             )
-            ->assertSee('Expiry date is earlier than the effective date')
+            ->assertSee('Expiry date is earlier than the date signed')
             ->call('save')
             ->assertRedirect();
 
@@ -152,12 +152,22 @@ class AgreementFormTest extends TestCase
             ->set('partnerMode', 'existing')
             ->set('partner_id', $partner->id)
             ->set('campus_id', $campus->id)
-            ->set('effective_date', '2026-01-15')
+            ->set('agreement_date', '2026-01-15')
             ->set('document_status', 'pending')
             ->set('project_status', 'not_started')
             ->assertSet('dateWarning', null)
             ->call('save')
             ->assertRedirect();
+    }
+
+    public function test_editing_an_agreement_hydrates_date_signed_from_agreement_date(): void
+    {
+        $agreement = Agreement::factory()->create(['agreement_date' => '2024-08-12']);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form', ['agreement' => $agreement])
+            ->assertSet('agreement_date', '2024-08-12');
     }
 
     public function test_empty_expiry_date_persists_as_null(): void

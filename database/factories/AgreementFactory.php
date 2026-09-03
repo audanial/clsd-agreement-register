@@ -25,7 +25,6 @@ class AgreementFactory extends Factory
             'pic_name' => null,
             'sector' => fake()->randomElement(['academic', 'industri']),
             'agreement_date' => fake()->date(),
-            'effective_date' => null,
             'expiry_date' => null,
             'received_from_po_at' => null,
             'board_approved_at' => null,

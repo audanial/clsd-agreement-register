@@ -6,6 +6,7 @@ use App\Models\Agreement;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class AgreementCastsTest extends TestCase
@@ -24,7 +25,6 @@ class AgreementCastsTest extends TestCase
         $date = today();
         $agreement = Agreement::factory()->create([
             'agreement_date' => $date,
-            'effective_date' => $date,
             'expiry_date' => $date,
             'received_from_po_at' => $date,
             'board_approved_at' => $date,
@@ -34,7 +34,6 @@ class AgreementCastsTest extends TestCase
         ]);
 
         $this->assertInstanceOf(Carbon::class, $agreement->agreement_date);
-        $this->assertInstanceOf(Carbon::class, $agreement->effective_date);
         $this->assertInstanceOf(Carbon::class, $agreement->expiry_date);
         $this->assertInstanceOf(Carbon::class, $agreement->received_from_po_at);
         $this->assertInstanceOf(Carbon::class, $agreement->board_approved_at);
@@ -63,7 +62,7 @@ class AgreementCastsTest extends TestCase
         $this->assertFalse($agreement->isExpired());
     }
 
-    public function test_year_is_derived_from_agreement_date_and_is_null_when_the_date_is_null(): void
+    public function test_year_accessor_still_derives_from_agreement_date(): void
     {
         $agreement = Agreement::factory()->create(['agreement_date' => '2024-06-15']);
 
@@ -93,5 +92,17 @@ class AgreementCastsTest extends TestCase
         $agreement->update(['archived_at' => now()]);
 
         $this->assertNull($agreement->fresh()->archived_at);
+    }
+
+    public function test_effective_date_column_no_longer_exists(): void
+    {
+        $this->assertFalse(Schema::hasColumn('agreements', 'effective_date'));
+    }
+
+    public function test_agreement_factory_does_not_reference_effective_date(): void
+    {
+        $definition = Agreement::factory()->definition();
+
+        $this->assertArrayNotHasKey('effective_date', $definition);
     }
 }

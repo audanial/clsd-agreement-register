@@ -10,6 +10,7 @@ new class extends Component
     public Agreement $agreement;
 
     public string $document_status = '';
+
     public string $project_status = '';
 
     public function mount(Agreement $agreement): void
@@ -105,13 +106,8 @@ new class extends Component
             </div>
 
             <div>
-                <dt class="text-sm font-medium text-gray-500">Agreement date</dt>
+                <dt class="text-sm font-medium text-gray-500">Date Signed</dt>
                 <dd class="mt-1 text-sm">{{ $agreement->agreement_date?->format('d M Y') ?? '—' }}</dd>
-            </div>
-
-            <div>
-                <dt class="text-sm font-medium text-gray-500">Effective date</dt>
-                <dd class="mt-1 text-sm">{{ $agreement->effective_date?->format('d M Y') ?? '—' }}</dd>
             </div>
 
             <div>

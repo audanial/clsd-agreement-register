@@ -76,6 +76,12 @@ This is a **work-hours project**. Build at the office. QA study evenings and job
 - [ ] M5-2 admin-only user-creation web form — still open; documented as future work in `AGENTS.md` and `README.md`.
 - [ ] Excel import of 2022–2024 historical data — **only if explicitly requested**.
 
+### M6 — Post-deployment usability fixes (in progress)
+Split into three handoffs (schema-first order):
+- [x] M6b — PIC becomes a plain `pic_name` string (handoff-m6b-pic.md).
+- [ ] M6c — Merge `agreement_date` + `effective_date` into "Date Signed" and drop `effective_date` (handoff-m6c-date-merge.md). Local code done; production migration gated on confirmed backup.
+- [ ] M6a — UI-only fixes: list columns, duration format, partner-mode `wire:model.live`, date-format consistency (handoff-m6a-ui.md).
+
 ### 🚫 Explicitly OUT of MVP scope (phase-later, do not build now)
 File upload UI · dashboard analytics · archive/restore UX · notifications/reminders · CSV export · Excel import · approval workflow engine · spatie/laravel-permission.
 

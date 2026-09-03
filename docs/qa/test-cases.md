@@ -754,7 +754,7 @@ Database stores `NULL`; detail page shows "Indefinite", not a blank or default d
 
 ---
 
-### TC-030 — Expiry before effective date warns but still saves
+### TC-030 — Expiry before Date Signed warns but still saves
 
 | | |
 |---|---|
@@ -765,17 +765,17 @@ Database stores `NULL`; detail page shows "Indefinite", not a blank or default d
 | **Preconditions** | A legal user is logged in; a partner and campus exist |
 
 **Steps**
-1. Enter `effective_date = 2026-01-15` and `expiry_date = 2026-01-01`.
+1. Enter `agreement_date = 2026-01-15` and `expiry_date = 2026-01-01`.
 2. Assert the warning text is shown before saving.
 3. Save the form.
 
 **Expected result**
-Warning text reads "Expiry date is earlier than the effective date. Save anyway if that matches the document."; the agreement is saved and the user is redirected.
+Warning text reads "Expiry date is earlier than the date signed. Save anyway if that matches the document."; the agreement is saved and the user is redirected.
 
 **Automated by**
-`AgreementFormTest::test_expiry_before_effective_shows_a_warning_but_still_saves`
+`AgreementFormTest::test_expiry_before_date_signed_warns_but_still_saves`
 
-**Status** Pass (24 Aug 2026)
+**Status** Pass (3 Sep 2026)
 
 ---
 
@@ -790,7 +790,7 @@ Warning text reads "Expiry date is earlier than the effective date. Save anyway 
 | **Preconditions** | A legal user is logged in; a partner and campus exist |
 
 **Steps**
-1. Enter only `effective_date`.
+1. Enter only `agreement_date`.
 2. Assert `dateWarning` is null.
 
 **Expected result**
@@ -799,7 +799,7 @@ No warning is shown; the form still saves.
 **Automated by**
 `AgreementFormTest::test_no_warning_when_only_one_date_is_present`
 
-**Status** Pass (24 Aug 2026)
+**Status** Pass (3 Sep 2026)
 
 ---
 
@@ -1600,5 +1600,41 @@ Login is rejected with the generic `auth.failed` message.
 `AgreementRelationsTest::test_pic_name_is_fillable_and_saves_as_a_plain_string`  
 `AgreementRelationsTest::test_pic_relation_no_longer_exists_on_the_model`  
 `AgreementShowTest::test_editing_an_agreement_with_a_null_pic_name_renders_a_dash`
+
+**Status** Pass (3 Sep 2026)
+
+---
+
+## 13. Date Signed merge (M6-5)
+
+### TC-068 — Agreement Date and Effective Date merge into a single Date Signed field
+
+| | |
+|---|---|
+| **Feature area** | Dates & Expiry Semantics |
+| **Business rule** | BR-31 — `effective_date` is dropped; the UI field "Date Signed" is backed by `agreement_date` |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | An agreement exists with `agreement_date` set |
+
+**Steps**
+1. Open the create/edit form and the agreement detail page.
+2. Inspect the agreements table schema and the factory definition.
+3. Enter an expiry earlier than the date signed and attempt to save.
+
+**Expected result**
+- The form shows a single "Date Signed" input wired to `agreement_date`.
+- The detail page shows one "Date Signed" row; no "Effective date" row exists.
+- `effective_date` is not present in the `agreements` table schema or factory.
+- The soft warning still appears and save still succeeds when expiry precedes date signed.
+
+**Automated by**
+`AgreementFormTest::test_editing_an_agreement_hydrates_date_signed_from_agreement_date`  
+`AgreementFormTest::test_expiry_before_date_signed_warns_but_still_saves`  
+`AgreementFormTest::test_no_warning_when_only_one_date_is_present`  
+`AgreementShowTest::test_detail_page_shows_one_date_signed_row`  
+`AgreementCastsTest::test_year_accessor_still_derives_from_agreement_date`  
+`AgreementCastsTest::test_effective_date_column_no_longer_exists`  
+`AgreementCastsTest::test_agreement_factory_does_not_reference_effective_date`
 
 **Status** Pass (3 Sep 2026)

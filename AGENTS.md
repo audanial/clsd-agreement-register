@@ -97,10 +97,11 @@ architect recommendations:
   NOT a User record. No login, no account, ever, for now. Deliberate
   scope boundary — PIC self-service login is a separate, unplanned
   future idea (see Future considerations below).
-- Date merge (Decision 5): APPROVED as a real migration — drop the
-  effective_date column. Verified directly: all 10 live agreements on
-  Laravel Cloud have matching agreement_date/effective_date values,
-  zero data loss risk confirmed before approving this.
+- Date merge (Decision 5): IMPLEMENTED as a real migration — the
+  `effective_date` column has been dropped. Verified directly: all 10 live
+  agreements on Laravel Cloud had matching `agreement_date`/`effective_date`
+  values before the migration ran, and the column was removed only after a
+  confirmed production backup (see handoff-m6c-date-merge.md).
 - Timezone (Decision 7): fix to Asia/Kuala_Lumpur — outside the
   original six M6 items, but approved as a bonus fix.
 - Other decisions (1, 2, 3, 5b, 6, 6a, 6b): all approved as originally

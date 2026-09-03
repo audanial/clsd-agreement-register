@@ -37,8 +37,6 @@ new class extends Component
 
     public ?string $agreement_date = null;
 
-    public ?string $effective_date = null;
-
     public ?string $expiry_date = null;
 
     public string $document_status = 'pending';
@@ -61,7 +59,6 @@ new class extends Component
             $this->pic_name = $agreement->pic_name;
             $this->sector = $agreement->sector ?? '';
             $this->agreement_date = $agreement->agreement_date?->format('Y-m-d');
-            $this->effective_date = $agreement->effective_date?->format('Y-m-d');
             $this->expiry_date = $agreement->expiry_date?->format('Y-m-d');
             $this->document_status = $agreement->document_status;
             $this->project_status = $agreement->project_status;
@@ -92,7 +89,6 @@ new class extends Component
             'pic_name' => $validated['pic_name'] ?: null,
             'sector' => $validated['sector'] ?: null,
             'agreement_date' => $validated['agreement_date'] ?: null,
-            'effective_date' => $validated['effective_date'] ?: null,
             'expiry_date' => $validated['expiry_date'] ?: null,
             'document_status' => $validated['document_status'],
             'project_status' => $validated['project_status'],
@@ -127,7 +123,6 @@ new class extends Component
             'pic_name' => ['nullable', 'required_if:picMode,new', 'string', 'max:255'],
             'sector' => ['nullable', 'in:academic,industri'],
             'agreement_date' => ['nullable', 'date'],
-            'effective_date' => ['nullable', 'date'],
             'expiry_date' => ['nullable', 'date'],
             'document_status' => ['required', 'in:pending,awaiting_partner,signed'],
             'project_status' => ['required', 'in:not_started,ongoing,stalled,completed'],
@@ -206,12 +201,12 @@ new class extends Component
     #[Computed]
     public function dateWarning(): ?string
     {
-        if (! $this->effective_date || ! $this->expiry_date) {
+        if (! $this->agreement_date || ! $this->expiry_date) {
             return null;
         }
 
-        return $this->expiry_date < $this->effective_date
-            ? 'Expiry date is earlier than the effective date. Save anyway if that matches the document.'
+        return $this->expiry_date < $this->agreement_date
+            ? 'Expiry date is earlier than the date signed. Save anyway if that matches the document.'
             : null;
     }
 
@@ -352,17 +347,11 @@ new class extends Component
             </div>
         </div>
 
-        <div class="grid gap-6 md:grid-cols-3">
+        <div class="grid gap-6 md:grid-cols-2">
             <div>
-                <label class="block text-sm font-medium">Agreement date</label>
+                <label class="block text-sm font-medium">Date Signed</label>
                 <input wire:model="agreement_date" type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                 @error('agreement_date') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium">Effective date</label>
-                <input wire:model="effective_date" type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                @error('effective_date') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <div>

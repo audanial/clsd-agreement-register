@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'title', 'type', 'partner_id', 'campus_id', 'pic_name', 'sector',
-    'agreement_date', 'effective_date', 'expiry_date',
+    'agreement_date', 'expiry_date',
     'received_from_po_at', 'board_approved_at', 'signed_by_unikl_at', 'sent_to_partner_at', 'signed_date',
     'document_status', 'project_status', 'project_status_updated_at',
     'scope', 'notes',
@@ -34,7 +34,6 @@ class Agreement extends Model
     {
         return [
             'agreement_date' => 'date',
-            'effective_date' => 'date',
             'expiry_date' => 'date',
             'received_from_po_at' => 'date',
             'board_approved_at' => 'date',
