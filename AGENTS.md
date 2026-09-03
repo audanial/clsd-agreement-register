@@ -84,3 +84,29 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
   plain (default browser styling, minimal Tailwind). Worth a design pass
   once real users have used the MVP and given feedback on what's confusing
   or missing, rather than guessing now. Raised 24 Aug 2026.
+
+## M6 decisions (2 Sep 2026) — pending Claude Code plan revision
+
+All 11 M6 decisions finalized with Amir. Key changes from the original
+architect recommendations:
+- PIC (Decision 4): CHANGED to Option (c) — PIC is a plain name string,
+  NOT a User record. No login, no account, ever, for now. Deliberate
+  scope boundary — PIC self-service login is a separate, unplanned
+  future idea (see Future considerations below).
+- Date merge (Decision 5): APPROVED as a real migration — drop the
+  effective_date column. Verified directly: all 10 live agreements on
+  Laravel Cloud have matching agreement_date/effective_date values,
+  zero data loss risk confirmed before approving this.
+- Timezone (Decision 7): fix to Asia/Kuala_Lumpur — outside the
+  original six M6 items, but approved as a bonus fix.
+- Other decisions (1, 2, 3, 5b, 6, 6a, 6b): all approved as originally
+  recommended by Claude Code's first M6 plan draft.
+
+Full context and reasoning for each decision was discussed in detail
+in chat before this note was written. If docs/architecture-plan-m6.md
+does not yet exist, the next step is: send Claude Code the full
+decision list (see this note's summary above) and ask it to produce
+docs/architecture-plan-m6.md reflecting these decisions, including a
+proper schema-change specification for the revised PIC approach
+(likely a new pic_name column replacing pic_user_id's role, since PIC
+is no longer tied to the users table).
