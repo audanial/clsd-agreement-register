@@ -623,51 +623,54 @@ No warning is shown. *This pins current behaviour per DEF-003; the test is expec
 
 ---
 
-### TC-025 — PIC and campus dropdowns list only active entries
+### TC-025 — Campus dropdown lists only active campuses; PIC autocomplete offers distinct existing names
 
 | | |
 |---|---|
 | **Feature area** | Agreement Creation & Validation |
-| **Business rule** | BR-12 — Only active campuses and active users appear in dropdowns |
+| **Business rule** | BR-12 — Campus dropdown lists only active campuses; the PIC field offers autocomplete over distinct existing `pic_name` values |
 | **Priority** | Medium |
 | **Type** | Automated |
-| **Preconditions** | One active user, one inactive user, one active campus, one inactive campus exist |
+| **Preconditions** | One active campus, one inactive campus, and agreements with duplicate and null `pic_name` values exist |
 
 **Steps**
 1. Open the create form.
-2. Inspect the PIC and campus dropdowns.
+2. Inspect the campus dropdown.
+3. Inspect the PIC "Existing PIC" options.
 
 **Expected result**
-Active entries are present; inactive entries are absent.
+- Active campuses are present; inactive campuses are absent.
+- PIC options contain each distinct non-null `pic_name` exactly once; nulls are omitted.
 
 **Automated by**
-`AgreementFormTest::test_pic_dropdown_only_lists_active_users`  
-`AgreementFormTest::test_campus_dropdown_only_lists_active_campuses`
+`AgreementFormTest::test_campus_dropdown_only_lists_active_campuses`  
+`AgreementFormTest::test_existing_pic_mode_offers_previously_used_names`  
+`AgreementFormTest::test_pic_autocomplete_only_returns_distinct_non_null_names`
 
-**Status** Pass (24 Aug 2026)
+**Status** Pass (3 Sep 2026)
 
 ---
 
-### TC-026 — Edit form retains an inactive PIC already assigned to the agreement
+### TC-026 — Edit form retains an already-assigned PIC name
 
 | | |
 |---|---|
 | **Feature area** | Agreement Creation & Validation |
-| **Business rule** | BR-11 — Inactive PIC remains visible in edit form if already assigned |
+| **Business rule** | BR-11 — An already-assigned PIC name remains visible in the edit form |
 | **Priority** | Medium |
 | **Type** | Automated |
-| **Preconditions** | An agreement is assigned to an inactive user |
+| **Preconditions** | An agreement has `pic_name` set |
 
 **Steps**
 1. Open the edit form for that agreement.
 
 **Expected result**
-The inactive PIC's name is still shown/selected.
+The PIC name is still shown/selected in Existing PIC mode.
 
 **Automated by**
-`AgreementFormTest::test_edit_form_retains_an_inactive_pic_already_assigned`
+`AgreementFormTest::test_edit_form_retains_an_existing_pic_name`
 
-**Status** Pass (24 Aug 2026)
+**Status** Pass (3 Sep 2026)
 
 ---
 
@@ -854,32 +857,36 @@ Neither scope includes the null-expiry agreement.
 
 ## 6. Partner Management
 
-### TC-034 — Partner, campus, PIC, files and activities relations resolve
+### TC-034 — Partner, campus, PIC name, files and activities resolve correctly
 
 | | |
 |---|---|
 | **Feature area** | Partner Management |
-| **Business rule** | BR-18 — Model relations are wired correctly |
+| **Business rule** | BR-18 — Model relations are wired correctly; `pic_name` is a plain string attribute |
 | **Priority** | High |
 | **Type** | Automated |
-| **Preconditions** | An agreement with related records exists |
+| **Preconditions** | An agreement exists |
 
 **Steps**
-1. Access `$agreement->partner`, `$agreement->campus`, `$agreement->pic`, `$agreement->files`, `$agreement->activities`.
+1. Access `$agreement->partner`, `$agreement->campus`, `$agreement->pic_name`, `$agreement->files`, `$agreement->activities`.
+2. Attempt to access the removed `$agreement->pic` relation.
 
 **Expected result**
-All relations return the expected models or collections; `pic` resolves via `pic_user_id`.
+- Partner and campus relations return the expected models; files and activities return collections.
+- `pic_name` is a plain string and is mass-assignable.
+- `$agreement->pic` no longer exists as a relation.
 
 **Automated by**
 `AgreementRelationsTest::test_partner_campus_and_pic_relations_resolve`  
-`AgreementRelationsTest::test_pic_relation_uses_the_pic_user_id_column`  
+`AgreementRelationsTest::test_pic_name_is_fillable_and_saves_as_a_plain_string`  
+`AgreementRelationsTest::test_pic_relation_no_longer_exists_on_the_model`  
 `AgreementRelationsTest::test_files_and_activities_relations_resolve`
 
-**Status** Pass (24 Aug 2026)
+**Status** Pass (3 Sep 2026)
 
 ---
 
-### TC-035 — PIC and partner may be null
+### TC-035 — PIC may be null
 
 | | |
 |---|---|
@@ -887,18 +894,19 @@ All relations return the expected models or collections; `pic` resolves via `pic
 | **Business rule** | BR-11 — Historical rows may have no PIC |
 | **Priority** | Medium |
 | **Type** | Automated |
-| **Preconditions** | An agreement with `pic_user_id = null` and `partner_id = null` exists |
+| **Preconditions** | An agreement with `pic_name = null` exists |
 
 **Steps**
-1. Access `$agreement->pic` and `$agreement->partner`.
+1. Render the agreement detail page.
 
 **Expected result**
-Both return `null` without error.
+The PIC renders as `—` without error.
 
 **Automated by**
-`AgreementRelationsTest::test_pic_may_be_null`
+`AgreementShowTest::test_editing_an_agreement_with_a_null_pic_name_renders_a_dash`  
+`BoundaryConditionsTest::test_null_pic_renders_as_em_dash_and_row_still_renders`
 
-**Status** Pass (24 Aug 2026)
+**Status** Pass (3 Sep 2026)
 
 ---
 
@@ -910,7 +918,7 @@ Both return `null` without error.
 | **Business rule** | BR-11 — Historical rows may have no PIC; rendering must not break |
 | **Priority** | Medium |
 | **Type** | Automated |
-| **Preconditions** | An agreement with `pic_user_id = null` exists |
+| **Preconditions** | An agreement with `pic_name = null` exists |
 
 **Steps**
 1. Render the agreement detail page.
@@ -923,7 +931,7 @@ Both return `null` without error.
 **Automated by**
 `BoundaryConditionsTest::test_null_pic_renders_as_em_dash_and_row_still_renders`
 
-**Status** Pass (27 Aug 2026)
+**Status** Pass (3 Sep 2026)
 
 ---
 
@@ -1538,31 +1546,6 @@ The database still shows `is_active = true` for the admin.
 
 ---
 
-### TC-062 — Deactivating a user removes them from the PIC dropdown
-
-| | |
-|---|---|
-| **Feature area** | User Management |
-| **Business rule** | BR-26 — Deactivation is reflected immediately in the agreement form |
-| **Priority** | High |
-| **Type** | Automated |
-| **Preconditions** | An active user exists; an admin is logged in |
-
-**Steps**
-1. Open the agreement create form and confirm the user appears in the PIC dropdown.
-2. Deactivate the user via the user-management page.
-3. Open the agreement create form again.
-
-**Expected result**
-The deactivated user no longer appears in the PIC dropdown. Existing agreements they were assigned to still show their name (already covered by TC-026).
-
-**Automated by**
-`UserManagementTest::test_deactivating_a_user_removes_them_from_the_pic_dropdown`
-
-**Status** Pass (27 Aug 2026)
-
----
-
 ### TC-063 — A user deactivated through the UI cannot log in
 
 | | |
@@ -1584,3 +1567,38 @@ Login is rejected with the generic `auth.failed` message.
 `UserManagementTest::test_deactivated_user_cannot_log_in`
 
 **Status** Pass (27 Aug 2026)
+
+---
+
+## 12. PIC as a plain name (M6-4)
+
+### TC-067 — PIC is captured as a plain name string, not a User record
+
+| | |
+|---|---|
+| **Feature area** | Agreement Creation & Validation |
+| **Business rule** | BR-30 — PIC is a plain name string on agreements; there is no backing `users` or `pics` table |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | A legal user is logged in; at least one agreement with a PIC name already exists |
+
+**Steps**
+1. Create a new agreement in "New PIC" mode, type a name, and save.
+2. Create a second agreement in "Existing PIC" mode.
+3. Inspect the agreement detail page and the model for the removed `pic()` relation.
+
+**Expected result**
+- The typed name is saved directly to `agreements.pic_name`.
+- Existing PIC mode offers the previously used name as an option.
+- The detail page renders the PIC name (or `—` if null).
+- The `Agreement` model no longer has a `pic()` relation.
+
+**Automated by**
+`AgreementFormTest::test_new_pic_mode_requires_a_name`  
+`AgreementFormTest::test_existing_pic_mode_offers_previously_used_names`  
+`AgreementFormTest::test_pic_mode_radios_are_live_bound`  
+`AgreementRelationsTest::test_pic_name_is_fillable_and_saves_as_a_plain_string`  
+`AgreementRelationsTest::test_pic_relation_no_longer_exists_on_the_model`  
+`AgreementShowTest::test_editing_an_agreement_with_a_null_pic_name_renders_a_dash`
+
+**Status** Pass (3 Sep 2026)

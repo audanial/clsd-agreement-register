@@ -104,7 +104,7 @@ class BoundaryConditionsTest extends TestCase
     public function test_null_pic_renders_as_em_dash_and_row_still_renders(): void
     {
         $agreement = Agreement::factory()->signed()->create([
-            'pic_user_id' => null,
+            'pic_name' => null,
         ]);
 
         $this->actingAs(User::factory()->legal()->create());

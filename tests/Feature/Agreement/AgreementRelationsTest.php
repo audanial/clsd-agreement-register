@@ -7,7 +7,6 @@ use App\Models\AgreementActivity;
 use App\Models\AgreementFile;
 use App\Models\Campus;
 use App\Models\Partner;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -23,20 +22,20 @@ class AgreementRelationsTest extends TestCase
         $this->assertInstanceOf(Campus::class, $agreement->campus);
     }
 
-    public function test_pic_relation_uses_the_pic_user_id_column(): void
+    public function test_pic_name_is_fillable_and_saves_as_a_plain_string(): void
     {
-        $pic = User::factory()->legal()->create();
-        $agreement = Agreement::factory()->create(['pic_user_id' => $pic->id]);
+        $agreement = Agreement::factory()->create();
 
-        $this->assertInstanceOf(User::class, $agreement->pic);
-        $this->assertSame($pic->id, $agreement->pic->id);
+        $agreement->update(['pic_name' => 'Ahmad bin Osman']);
+
+        $this->assertSame('Ahmad bin Osman', $agreement->fresh()->pic_name);
     }
 
-    public function test_pic_may_be_null(): void
+    public function test_pic_relation_no_longer_exists_on_the_model(): void
     {
-        $agreement = Agreement::factory()->create(['pic_user_id' => null]);
+        $agreement = Agreement::factory()->create();
 
-        $this->assertNull($agreement->pic);
+        $this->assertFalse(method_exists($agreement, 'pic'));
     }
 
     public function test_files_and_activities_relations_resolve(): void

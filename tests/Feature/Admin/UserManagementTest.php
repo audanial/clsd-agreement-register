@@ -82,22 +82,6 @@ class UserManagementTest extends TestCase
         ]);
     }
 
-    public function test_deactivating_a_user_removes_them_from_the_pic_dropdown(): void
-    {
-        $pic = User::factory()->active()->create(['name' => 'Project Owner']);
-
-        $this->actingAs(User::factory()->admin()->create());
-
-        Livewire::test('agreement-form')
-            ->assertSee('Project Owner');
-
-        Livewire::test('user-manager')
-            ->call('toggle', $pic->id);
-
-        Livewire::test('agreement-form')
-            ->assertDontSee('Project Owner');
-    }
-
     public function test_deactivated_user_cannot_log_in(): void
     {
         $user = User::factory()->active()->create([

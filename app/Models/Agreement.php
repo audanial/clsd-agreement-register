@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
-    'title', 'type', 'partner_id', 'campus_id', 'pic_user_id', 'sector',
+    'title', 'type', 'partner_id', 'campus_id', 'pic_name', 'sector',
     'agreement_date', 'effective_date', 'expiry_date',
     'received_from_po_at', 'board_approved_at', 'signed_by_unikl_at', 'sent_to_partner_at', 'signed_date',
     'document_status', 'project_status', 'project_status_updated_at',
@@ -54,11 +54,6 @@ class Agreement extends Model
     public function campus(): BelongsTo
     {
         return $this->belongsTo(Campus::class);
-    }
-
-    public function pic(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'pic_user_id');
     }
 
     public function files(): HasMany

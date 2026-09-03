@@ -40,7 +40,7 @@ new class extends Component
     public function agreements()
     {
         return Agreement::query()
-            ->with(['partner', 'campus', 'pic'])
+            ->with(['partner', 'campus'])
             ->when(! $this->showArchived, fn ($q) => $q->notArchived())
             ->when($this->showArchived, fn ($q) => $q->archived())
             ->when($this->search, function ($q) {

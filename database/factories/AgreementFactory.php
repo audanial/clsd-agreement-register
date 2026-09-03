@@ -22,7 +22,7 @@ class AgreementFactory extends Factory
                 ['code' => 'TBD'],
                 ['name' => 'Not Assigned', 'is_institute' => false, 'sort_order' => 999, 'is_active' => true]
             )->id,
-            'pic_user_id' => null,
+            'pic_name' => null,
             'sector' => fake()->randomElement(['academic', 'industri']),
             'agreement_date' => fake()->date(),
             'effective_date' => null,

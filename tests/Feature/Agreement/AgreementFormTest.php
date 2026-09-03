@@ -343,27 +343,72 @@ class AgreementFormTest extends TestCase
         ]);
     }
 
-    public function test_pic_dropdown_only_lists_active_users(): void
+    public function test_new_pic_mode_requires_a_name(): void
     {
-        User::factory()->active()->create(['name' => 'Active Staff']);
-        User::factory()->inactive()->create(['name' => 'Inactive Staff']);
+        $partner = Partner::factory()->create();
+        $campus = Campus::active()->first();
 
         $this->actingAs(User::factory()->legal()->create());
 
         Livewire::test('agreement-form')
-            ->assertSee('Active Staff')
-            ->assertDontSee('Inactive Staff');
+            ->set('title', 'Missing PIC')
+            ->set('type', 'MOU')
+            ->set('partnerMode', 'existing')
+            ->set('partner_id', $partner->id)
+            ->set('campus_id', $campus->id)
+            ->set('picMode', 'new')
+            ->set('pic_name', '')
+            ->set('document_status', 'pending')
+            ->set('project_status', 'not_started')
+            ->call('save')
+            ->assertHasErrors(['pic_name']);
     }
 
-    public function test_edit_form_retains_an_inactive_pic_already_assigned(): void
+    public function test_existing_pic_mode_offers_previously_used_names(): void
     {
-        $inactivePic = User::factory()->inactive()->create(['name' => 'Former PIC']);
-        $agreement = Agreement::factory()->create(['pic_user_id' => $inactivePic->id]);
+        Agreement::factory()->create(['pic_name' => 'Ahmad bin Osman']);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form')
+            ->set('picMode', 'existing')
+            ->assertSee('Ahmad bin Osman');
+    }
+
+    public function test_pic_autocomplete_only_returns_distinct_non_null_names(): void
+    {
+        Agreement::factory()->create(['pic_name' => 'Ahmad bin Osman']);
+        Agreement::factory()->create(['pic_name' => 'Ahmad bin Osman']);
+        Agreement::factory()->create(['pic_name' => 'Siti Nurhaliza']);
+        Agreement::factory()->create(['pic_name' => null]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $names = Livewire::test('agreement-form')->instance()->existingPics;
+
+        $this->assertCount(2, $names);
+        $this->assertContains('Ahmad bin Osman', $names);
+        $this->assertContains('Siti Nurhaliza', $names);
+        $this->assertNotContains(null, $names);
+    }
+
+    public function test_pic_mode_radios_are_live_bound(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreement-form')->html();
+
+        $this->assertSame(2, substr_count($html, 'wire:model.live="picMode"'));
+    }
+
+    public function test_edit_form_retains_an_existing_pic_name(): void
+    {
+        $agreement = Agreement::factory()->create(['pic_name' => 'Ahmad bin Osman']);
 
         $this->actingAs(User::factory()->legal()->create());
 
         Livewire::test('agreement-form', ['agreement' => $agreement])
-            ->assertSee('Former PIC');
+            ->assertSee('Ahmad bin Osman');
     }
 
     public function test_campus_dropdown_only_lists_active_campuses(): void

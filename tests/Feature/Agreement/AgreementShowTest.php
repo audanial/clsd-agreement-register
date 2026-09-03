@@ -55,6 +55,17 @@ class AgreementShowTest extends TestCase
             ->assertDontSee('01 Jan 1970');
     }
 
+    public function test_editing_an_agreement_with_a_null_pic_name_renders_a_dash(): void
+    {
+        $agreement = Agreement::factory()->signed()->create(['pic_name' => null]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $this->get(route('agreements.show', $agreement))
+            ->assertOk()
+            ->assertSee('—');
+    }
+
     public function test_activity_feed_renders_newest_first(): void
     {
         $agreement = Agreement::factory()->signed()->create();

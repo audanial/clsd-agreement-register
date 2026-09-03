@@ -76,20 +76,24 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
 ## Future considerations (not yet scoped/planned)
 
 - M5-2 user management: non-technical Legal staff cannot use `php artisan user:create` to add new
-  PICs (project owners). The M5 handover plan includes a simple admin-only "create user" web form
-  so Intan can manage accounts without a terminal. Until that form is built, the command remains
-  the only path and is documented in `README.md`. Raised 21 Aug 2026; updated 27 Aug 2026.
+  staff accounts (admin/legal/viewer). The M5 handover plan includes a simple admin-only "create user" web form
+  so Intan can manage staff accounts without a terminal. PICs are plain name strings (Decision 4c, implemented
+  in M6-4) and do not need user accounts. Until that form is built, the command remains the only path for
+  staff accounts and is documented in `README.md`. Raised 21 Aug 2026; updated 2 Sep 2026.
+
+- PIC self-service view: a future idea where PICs (external stakeholders) could log in and see only
+  their own agreements. Explicitly not built in M6-4; requires a separate decision and scope. Logged 2 Sep 2026.
 
 - UI/UX polish and visual design pass — current M3 UI is functional but
   plain (default browser styling, minimal Tailwind). Worth a design pass
   once real users have used the MVP and given feedback on what's confusing
   or missing, rather than guessing now. Raised 24 Aug 2026.
 
-## M6 decisions (2 Sep 2026) — pending Claude Code plan revision
+## M6 decisions (2 Sep 2026) — implemented
 
 All 11 M6 decisions finalized with Amir. Key changes from the original
 architect recommendations:
-- PIC (Decision 4): CHANGED to Option (c) — PIC is a plain name string,
+- PIC (Decision 4): Option (c) IMPLEMENTED — PIC is a plain name string,
   NOT a User record. No login, no account, ever, for now. Deliberate
   scope boundary — PIC self-service login is a separate, unplanned
   future idea (see Future considerations below).

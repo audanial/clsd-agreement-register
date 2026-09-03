@@ -5,7 +5,6 @@ use App\Models\Agreement;
 use App\Models\Campus;
 use App\Models\Country;
 use App\Models\Partner;
-use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -30,7 +29,9 @@ new class extends Component
 
     public ?int $campus_id = null;
 
-    public ?int $pic_user_id = null;
+    public string $picMode = 'existing';
+
+    public ?string $pic_name = null;
 
     public string $sector = '';
 
@@ -57,7 +58,7 @@ new class extends Component
             $this->type = $agreement->type;
             $this->partner_id = $agreement->partner_id;
             $this->campus_id = $agreement->campus_id;
-            $this->pic_user_id = $agreement->pic_user_id;
+            $this->pic_name = $agreement->pic_name;
             $this->sector = $agreement->sector ?? '';
             $this->agreement_date = $agreement->agreement_date?->format('Y-m-d');
             $this->effective_date = $agreement->effective_date?->format('Y-m-d');
@@ -88,7 +89,7 @@ new class extends Component
             'type' => $validated['type'],
             'partner_id' => $partnerId,
             'campus_id' => $validated['campus_id'],
-            'pic_user_id' => $validated['pic_user_id'],
+            'pic_name' => $validated['pic_name'] ?: null,
             'sector' => $validated['sector'] ?: null,
             'agreement_date' => $validated['agreement_date'] ?: null,
             'effective_date' => $validated['effective_date'] ?: null,
@@ -122,7 +123,8 @@ new class extends Component
             'newPartnerShortName' => ['nullable', 'string', 'max:100'],
             'newPartnerCountryId' => ['nullable', 'exists:countries,id'],
             'campus_id' => ['required', 'exists:campuses,id'],
-            'pic_user_id' => ['nullable', 'exists:users,id'],
+            'picMode' => ['required', 'in:existing,new'],
+            'pic_name' => ['nullable', 'required_if:picMode,new', 'string', 'max:255'],
             'sector' => ['nullable', 'in:academic,industri'],
             'agreement_date' => ['nullable', 'date'],
             'effective_date' => ['nullable', 'date'],
@@ -134,7 +136,7 @@ new class extends Component
         ];
     }
 
-    protected function resolvePartnerId(): int
+    protected function resolvePartnerId(): ?int
     {
         if ($this->partnerMode === 'new' && filled($this->newPartnerName)) {
             $partner = Partner::create([
@@ -180,15 +182,13 @@ new class extends Component
     }
 
     #[Computed]
-    public function users()
+    public function existingPics()
     {
-        return User::query()
-            ->where(function ($query) {
-                $query->where('is_active', true)
-                    ->orWhere('id', $this->pic_user_id);
-            })
-            ->orderBy('name')
-            ->get();
+        return Agreement::query()
+            ->whereNotNull('pic_name')
+            ->distinct()
+            ->orderBy('pic_name')
+            ->pluck('pic_name');
     }
 
     #[Computed]
@@ -317,13 +317,28 @@ new class extends Component
         <div class="grid gap-6 md:grid-cols-2">
             <div>
                 <label class="block text-sm font-medium">PIC</label>
-                <select wire:model="pic_user_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                    <option value="">No PIC</option>
-                    @foreach ($this->users as $user)
-                        <option value="{{ $user->id }}">{{ $user->name }}</option>
-                    @endforeach
-                </select>
-                @error('pic_user_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                <div class="mt-2 flex gap-4 text-sm">
+                    <label class="flex items-center gap-2">
+                        <input wire:model.live="picMode" type="radio" value="existing" class="rounded border-gray-300">
+                        Existing PIC
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input wire:model.live="picMode" type="radio" value="new" class="rounded border-gray-300">
+                        New PIC
+                    </label>
+                </div>
+
+                @if ($picMode === 'existing')
+                    <select wire:model="pic_name" class="mt-3 block w-full rounded-md border-gray-300 shadow-sm">
+                        <option value="">No PIC</option>
+                        @foreach ($this->existingPics as $name)
+                            <option value="{{ $name }}">{{ $name }}</option>
+                        @endforeach
+                    </select>
+                @else
+                    <input wire:model="pic_name" type="text" placeholder="Full name, e.g. Ahmad bin Osman" class="mt-3 block w-full rounded-md border-gray-300 shadow-sm">
+                @endif
+                @error('pic_name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <div>

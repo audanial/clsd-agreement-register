@@ -91,7 +91,7 @@ new class extends Component
 
             <div>
                 <dt class="text-sm font-medium text-gray-500">PIC</dt>
-                <dd class="mt-1 text-sm">{{ $agreement->pic?->name ?? '—' }}</dd>
+                <dd class="mt-1 text-sm">{{ $agreement->pic_name ?? '—' }}</dd>
             </div>
 
             <div>
