@@ -18,7 +18,7 @@ class CampusSeeder extends Seeder
             ['code' => 'MESTECH', 'name' => 'Institute of Medical Science Technology',                    'is_institute' => true],
             ['code' => 'MFI',     'name' => 'Malaysia France Institute',                                  'is_institute' => true],
             ['code' => 'MIDI',    'name' => 'Malaysia Italy Design Institute',                            'is_institute' => true],
-            ['code' => 'MICET',   'name' => 'Malaysian Institute of Chemical & Bio-Engineering Technology','is_institute' => true],
+            ['code' => 'MICET',   'name' => 'Malaysian Institute of Chemical & Bio-Engineering Technology', 'is_institute' => true],
             ['code' => 'MITEC',   'name' => 'Malaysian Institute of Industrial Technology',               'is_institute' => true],
             ['code' => 'MIAT',    'name' => 'Malaysian Institute of Aviation Technology',                 'is_institute' => true],
             ['code' => 'BMI',     'name' => 'British Malaysian Institute',                                'is_institute' => true],
@@ -28,6 +28,9 @@ class CampusSeeder extends Seeder
             ['code' => 'UIO',     'name' => 'UniKL International Office',                                 'is_institute' => false],
             ['code' => 'ACE',     'name' => 'Centre for Advancement & Continuing Education',              'is_institute' => false],
             ['code' => 'CPS',     'name' => 'Centre for Postgraduate Studies',                            'is_institute' => false],
+            ['code' => 'MCI',     'name' => 'UniKL Malaysia China Institute',                             'is_institute' => false],
+            ['code' => 'CIL',     'name' => 'Centre for Industrial Linkages',                             'is_institute' => false],
+            ['code' => 'CoRI',    'name' => 'Centre for Research and Innovation',                         'is_institute' => false],
 
             // Catch-all for historical rows where campus was never recorded.
             // Preferred over nullable campus_id so filtering stays simple.
@@ -39,7 +42,7 @@ class CampusSeeder extends Seeder
                 ['code' => $campus['code']],
                 $campus + [
                     'sort_order' => $i,
-                    'is_active'  => true,
+                    'is_active' => true,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]

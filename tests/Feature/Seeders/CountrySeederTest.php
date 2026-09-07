@@ -19,7 +19,7 @@ class CountrySeederTest extends TestCase
         $this->seed(CountrySeeder::class);
         $secondCount = DB::table('countries')->count();
 
-        $this->assertSame(25, $firstCount);
+        $this->assertSame(26, $firstCount);
         $this->assertSame($firstCount, $secondCount);
     }
 

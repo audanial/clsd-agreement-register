@@ -220,7 +220,7 @@ class AgreementsIndexTest extends TestCase
         $headers = array_map('trim', array_map('strip_tags', $matches[1]));
 
         $this->assertSame(
-            ['Title', 'Partner', 'Duration', 'Scope', 'Status', 'Project', 'PIC', 'Campus', ''],
+            ['Title', 'Partner', 'Duration', 'Scope', 'Document Status', 'Project Status', 'PIC', 'Campus', ''],
             $headers
         );
     }
@@ -326,5 +326,90 @@ class AgreementsIndexTest extends TestCase
             ->assertSee('Alpha Title Match')
             ->assertSee('Delta Title')
             ->assertDontSee('Zeta Title');
+    }
+
+    public function test_year_filter_narrows_the_list_to_agreements_signed_in_that_year(): void
+    {
+        Agreement::factory()->signed()->create([
+            'title' => '2024 Agreement',
+            'agreement_date' => '2024-03-15',
+        ]);
+        Agreement::factory()->signed()->create([
+            'title' => '2023 Agreement',
+            'agreement_date' => '2023-08-20',
+        ]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreements-index', ['year' => '2024'])
+            ->assertSee('2024 Agreement')
+            ->assertDontSee('2023 Agreement');
+    }
+
+    public function test_year_dropdown_options_are_distinct_years_present_in_the_data(): void
+    {
+        Agreement::factory()->signed()->create(['agreement_date' => '2024-01-15']);
+        Agreement::factory()->signed()->create(['agreement_date' => '2024-06-20']);
+        Agreement::factory()->signed()->create(['agreement_date' => '2023-03-10']);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $years = Livewire::test('agreements-index')->instance()->availableYears;
+
+        $this->assertSame([2024, 2023], $years->toArray());
+    }
+
+    public function test_year_dropdown_options_respect_the_pending_visibility_scope_for_a_viewer(): void
+    {
+        Agreement::factory()->signed()->create([
+            'title' => 'Signed 2024',
+            'agreement_date' => '2024-05-01',
+        ]);
+        Agreement::factory()->pending()->create([
+            'title' => 'Pending 2022',
+            'agreement_date' => '2022-01-01',
+        ]);
+
+        $this->actingAs(User::factory()->viewer()->create());
+
+        $viewerYears = Livewire::test('agreements-index')->instance()->availableYears;
+
+        $this->assertContains(2024, $viewerYears->toArray());
+        $this->assertNotContains(2022, $viewerYears->toArray());
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $legalYears = Livewire::test('agreements-index')->instance()->availableYears;
+
+        $this->assertContains(2024, $legalYears->toArray());
+        $this->assertContains(2022, $legalYears->toArray());
+    }
+
+    public function test_changing_the_year_filter_resets_to_the_first_page(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreements-index', ['year' => '2023'])
+            ->set('paginators.page', 2)
+            ->set('year', '2024')
+            ->assertSet('paginators.page', 1);
+    }
+
+    public function test_an_agreement_with_a_null_agreement_date_is_excluded_from_every_year_filter_result(): void
+    {
+        Agreement::factory()->signed()->create([
+            'title' => 'Dated Agreement',
+            'agreement_date' => '2024-03-15',
+        ]);
+        Agreement::factory()->signed()->create([
+            'title' => 'Undated Agreement',
+            'agreement_date' => null,
+        ]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreements-index', ['year' => '2024'])
+            ->assertSee('Dated Agreement')
+            ->assertDontSee('Undated Agreement');
     }
 }

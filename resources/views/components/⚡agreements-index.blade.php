@@ -2,6 +2,7 @@
 
 use App\Models\Agreement;
 use App\Models\Campus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -28,11 +29,14 @@ new class extends Component
     public string $projectStatus = '';
 
     #[Url]
+    public string $year = '';
+
+    #[Url]
     public bool $showArchived = false;
 
     public function updating($name): void
     {
-        if (in_array($name, ['search', 'campus', 'type', 'documentStatus', 'projectStatus', 'showArchived'], true)) {
+        if (in_array($name, ['search', 'campus', 'type', 'documentStatus', 'projectStatus', 'year', 'showArchived'], true)) {
             $this->resetPage();
         }
     }
@@ -55,6 +59,7 @@ new class extends Component
             ->when($this->type, fn ($q) => $q->where('type', $this->type))
             ->when($this->documentStatus, fn ($q) => $q->where('document_status', $this->documentStatus))
             ->when($this->projectStatus, fn ($q) => $q->where('project_status', $this->projectStatus))
+            ->when($this->year, fn ($q) => $q->whereYear('agreement_date', $this->year))
             ->latest('agreement_date')
             ->paginate(15);
     }
@@ -97,6 +102,24 @@ new class extends Component
             'completed' => 'Completed',
         ];
     }
+
+    #[Computed]
+    public function availableYears()
+    {
+        $yearExpression = match (DB::getDriverName()) {
+            'sqlite' => "strftime('%Y', agreement_date)",
+            default => 'YEAR(agreement_date)',
+        };
+
+        // Aliased as available_year so it is not shadowed by the Agreement::year() accessor.
+        return Agreement::query()
+            ->selectRaw("DISTINCT {$yearExpression} as available_year")
+            ->whereNotNull('agreement_date')
+            ->orderByDesc('available_year')
+            ->pluck('available_year')
+            ->map(fn ($year) => (int) $year)
+            ->values();
+    }
 };
 ?>
 
@@ -111,7 +134,7 @@ new class extends Component
     </div>
 
     <div class="mb-6 rounded-lg bg-white p-4 shadow">
-        <div class="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <div class="grid gap-4 md:grid-cols-3 lg:grid-cols-7">
             <div>
                 <label class="block text-sm font-medium">Search</label>
                 <input wire:model.live="search" type="text" placeholder="Title or partner..." class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm">
@@ -157,6 +180,16 @@ new class extends Component
                 </select>
             </div>
 
+            <div>
+                <label class="block text-sm font-medium">Year</label>
+                <select wire:model.live="year" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm">
+                    <option value="">All</option>
+                    @foreach ($this->availableYears as $y)
+                        <option value="{{ $y }}">{{ $y }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             <div class="flex items-end">
                 <label class="flex items-center gap-2 text-sm">
                     <input wire:model.live="showArchived" type="checkbox" class="rounded border-gray-300">
@@ -167,23 +200,23 @@ new class extends Component
     </div>
 
     <div class="rounded-lg bg-white shadow">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Title</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Partner</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Duration</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Scope</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Project</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">PIC</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Campus</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500"></th>
+        <table class="min-w-full divide-y divide-gray-400">
+            <thead class="bg-[#293D7A]">
+                <tr class="divide-x divide-gray-400">
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">Title</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">Partner</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">Duration</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">Scope</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">Document Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">Project Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">PIC</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">Campus</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white"></th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200">
+            <tbody class="divide-y divide-gray-400">
                 @forelse ($this->agreements as $agreement)
-                    <tr>
+                    <tr class="divide-x divide-gray-400">
                         <td class="px-4 py-3 text-sm font-medium">{{ $agreement->title }}</td>
                         <td class="px-4 py-3 text-sm">{{ $agreement->partner?->name }}</td>
                         <td class="px-4 py-3 text-sm">

@@ -35,6 +35,9 @@ class CountrySeeder extends Seeder
             ['name' => 'United Arab Emirates',      'iso_code' => 'AE', 'is_domestic' => false],
             ['name' => 'Australia',                 'iso_code' => 'AU', 'is_domestic' => false],
             ['name' => 'United States',             'iso_code' => 'US', 'is_domestic' => false],
+
+            // Placeholder for the simplified partner quick-create country control.
+            ['name' => 'International',             'iso_code' => null, 'is_domestic' => false],
         ];
 
         foreach ($countries as $country) {

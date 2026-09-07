@@ -25,7 +25,7 @@ new class extends Component
 
     public string $newPartnerShortName = '';
 
-    public ?int $newPartnerCountryId = null;
+    public string $newPartnerCountry = 'local';
 
     public ?int $campus_id = null;
 
@@ -117,7 +117,7 @@ new class extends Component
             'partner_id' => ['nullable', 'required_if:partnerMode,existing', 'exists:partners,id'],
             'newPartnerName' => ['nullable', 'required_if:partnerMode,new', 'string', 'max:255'],
             'newPartnerShortName' => ['nullable', 'string', 'max:100'],
-            'newPartnerCountryId' => ['nullable', 'exists:countries,id'],
+            'newPartnerCountry' => ['required', 'in:local,international'],
             'campus_id' => ['required', 'exists:campuses,id'],
             'picMode' => ['required', 'in:existing,new'],
             'pic_name' => ['nullable', 'required_if:picMode,new', 'string', 'max:255'],
@@ -134,10 +134,16 @@ new class extends Component
     protected function resolvePartnerId(): ?int
     {
         if ($this->partnerMode === 'new' && filled($this->newPartnerName)) {
+            $countryId = match ($this->newPartnerCountry) {
+                'local' => Country::where('is_domestic', true)->first()?->id,
+                'international' => Country::where('name', 'International')->first()?->id,
+                default => null,
+            };
+
             $partner = Partner::create([
                 'name' => $this->newPartnerName,
                 'short_name' => $this->newPartnerShortName ?: null,
-                'country_id' => $this->newPartnerCountryId,
+                'country_id' => $countryId,
             ]);
 
             return $partner->id;
@@ -298,12 +304,16 @@ new class extends Component
 
                     <div class="grid gap-3 md:grid-cols-2">
                         <input wire:model="newPartnerShortName" type="text" placeholder="Short name (optional)" class="block w-full rounded-md border-gray-300 shadow-sm">
-                        <select wire:model="newPartnerCountryId" class="block w-full rounded-md border-gray-300 shadow-sm">
-                            <option value="">Country (optional)</option>
-                            @foreach ($this->countries as $country)
-                                <option value="{{ $country->id }}">{{ $country->name }}</option>
-                            @endforeach
-                        </select>
+                        <div class="flex items-center gap-4 text-sm">
+                            <label class="flex items-center gap-2">
+                                <input wire:model.live="newPartnerCountry" type="radio" value="local" class="rounded border-gray-300">
+                                Local
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input wire:model.live="newPartnerCountry" type="radio" value="international" class="rounded border-gray-300">
+                                International
+                            </label>
+                        </div>
                     </div>
                 </div>
             @endif
@@ -341,7 +351,7 @@ new class extends Component
                 <select wire:model="sector" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                     <option value="">Select sector</option>
                     <option value="academic">Academic</option>
-                    <option value="industri">Industri</option>
+                    <option value="industri">Industry</option>
                 </select>
                 @error('sector') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>

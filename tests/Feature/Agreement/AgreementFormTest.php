@@ -240,7 +240,6 @@ class AgreementFormTest extends TestCase
     public function test_partner_quick_create_creates_a_partner_and_links_it(): void
     {
         $campus = Campus::active()->first();
-        $country = Country::first();
 
         $this->actingAs(User::factory()->legal()->create());
 
@@ -250,7 +249,7 @@ class AgreementFormTest extends TestCase
             ->set('partnerMode', 'new')
             ->set('newPartnerName', 'NewCo Sdn Bhd')
             ->set('newPartnerShortName', 'NewCo')
-            ->set('newPartnerCountryId', $country?->id)
+            ->set('newPartnerCountry', 'international')
             ->set('campus_id', $campus->id)
             ->set('document_status', 'pending')
             ->set('project_status', 'not_started')

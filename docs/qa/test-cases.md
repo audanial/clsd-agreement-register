@@ -1775,11 +1775,79 @@ Login is rejected with the generic `auth.failed` message.
 - Both date inputs carry the `(DD/MM/YYYY)` hint.
 - The inputs still use the `Y-m-d` wire format.
 
-**Automated by**
-`DateFormattingTest::test_the_date_component_renders_day_month_year`  
-`DateFormattingTest::test_the_date_component_renders_a_dash_for_null`  
-`DateFormattingTest::test_no_view_renders_a_month_first_date_format`  
-`DateFormattingTest::test_date_inputs_carry_a_dd_mm_yyyy_hint`  
-`DateFormattingTest::test_form_date_inputs_still_use_the_y_m_d_wire_format`
+ **Automated by**
+ `DateFormattingTest::test_the_date_component_renders_day_month_year`  
+ `DateFormattingTest::test_the_date_component_renders_a_dash_for_null`  
+ `DateFormattingTest::test_no_view_renders_a_month_first_date_format`  
+ `DateFormattingTest::test_date_inputs_carry_a_dd_mm_yyyy_hint`  
+ `DateFormattingTest::test_form_date_inputs_still_use_the_y_m_d_wire_format`
 
-**Status** Pass (3 Sep 2026)
+ **Status** Pass (3 Sep 2026)
+
+---
+
+## 18. M7-1 — Year filter on the Register list
+
+### TC-070 — Year filter narrows the list and respects pending visibility
+
+| | |
+|---|---|
+| **Feature area** | List, Search & Filtering |
+| **Business rule** | BR-33 — `year` is derived from `agreement_date`; the Year filter uses `whereYear()` and the dropdown options respect the pending-visibility scope |
+| **Priority** | Medium |
+| **Type** | Automated |
+| **Preconditions** | Signed and pending agreements with distinct `agreement_date` years exist |
+
+**Steps**
+1. Render the agreements index with a Year filter value.
+2. Inspect the Year dropdown options as a viewer and as a legal user.
+3. Create an agreement with a null `agreement_date`.
+
+**Expected result**
+- Only agreements signed in the selected year are shown.
+- The dropdown lists distinct years present in visible agreements.
+- A viewer does not see a year that only contains pending agreements; a legal user does.
+- Agreements with a null date are excluded from every year filter result.
+
+**Automated by**
+`AgreementsIndexTest::test_year_filter_narrows_the_list_to_agreements_signed_in_that_year`  
+`AgreementsIndexTest::test_year_dropdown_options_are_distinct_years_present_in_the_data`  
+`AgreementsIndexTest::test_year_dropdown_options_respect_the_pending_visibility_scope_for_a_viewer`  
+`AgreementsIndexTest::test_changing_the_year_filter_resets_to_the_first_page`  
+`AgreementsIndexTest::test_an_agreement_with_a_null_agreement_date_is_excluded_from_every_year_filter_result`
+
+**Status** Pass (7 Sep 2026)
+
+---
+
+## 19. M7-5 — Country dropdown simplified to Local / International
+
+### TC-071 — Partner quick-create country control offers Local / International and resolves correctly
+
+| | |
+|---|---|
+| **Feature area** | Agreement Creation & Validation |
+| **Business rule** | BR-34 — The partner quick-create flow offers only Local/International; Local resolves to Malaysia and International resolves to a seeded placeholder row |
+| **Priority** | Medium |
+| **Type** | Automated |
+| **Preconditions** | `CountrySeeder` has run; the International placeholder row exists |
+
+**Steps**
+1. Create a new partner selecting "Local".
+2. Create a new partner selecting "International".
+3. Run `CountrySeeder` twice.
+4. Create an agreement using an existing partner.
+
+**Expected result**
+- "Local" resolves to the Malaysia row's `country_id`.
+- "International" resolves to the placeholder "International" row's `country_id`.
+- Running the seeder twice does not duplicate the "International" row.
+- Existing partners' `country_id` values are unchanged.
+
+**Automated by**
+`PartnerCountryTest::test_selecting_local_resolves_the_new_partners_country_to_malaysia`  
+`PartnerCountryTest::test_selecting_international_resolves_the_new_partners_country_to_the_placeholder_row`  
+`PartnerCountryTest::test_country_seeder_is_still_idempotent_with_the_new_row`  
+`PartnerCountryTest::test_existing_partners_country_id_is_unaffected_by_this_change`
+
+**Status** Pass (7 Sep 2026)
