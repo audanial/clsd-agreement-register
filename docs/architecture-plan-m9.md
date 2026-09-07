@@ -68,6 +68,26 @@ implementer should identify the actual cause rather than blindly re-adding
   checking the raw rendered tag is actually present, not just checking the
   text "MFI" appears without confirming it's wrapped)
 
+### Outcome (implemented 7 Sep 2026 — differs from the original spec above)
+
+**Root cause found:** the `<strong>` tag was already present from M8-2; it
+was missing an explicit `font-bold` Tailwind class. Tailwind's Preflight
+(CSS reset) neutralizes `<strong>`'s implicit default bold weight, so the
+tag alone did not visibly render bold in this project. Fixed by adding
+`class="font-bold"` to the tag. **Worth remembering for any future
+`<strong>` usage in this codebase — pair it with an explicit `font-bold`
+class, don't rely on the tag alone.**
+
+**Scope changed after a follow-up correction, same day:** once bold was
+confirmed working, Amir requested the Register list drop the full
+institute/department name entirely, showing the bold code ONLY (e.g. just
+"UIO", no "— UniKL International Office") — the audience using this system
+already knows the codes, and the full name was judged unnecessary clutter
+in the list specifically. **This applies to the list view only.** The
+Create/Edit form's Campus/Department dropdown (M9-3) deliberately KEEPS
+showing both the bold code and the full name, since picking a value needs
+full context in a way that viewing a reference list does not.
+
 ---
 
 ## 2. M9-2 — Rename "Campus" to "Campus / Department"
