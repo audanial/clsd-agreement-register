@@ -91,6 +91,35 @@ class AgreementFormTest extends TestCase
             ->assertHasErrors(['type']);
     }
 
+    public function test_moc_is_not_an_option_in_the_type_dropdown(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreement-form')->html();
+
+        $this->assertStringNotContainsString('value="MOC"', $html);
+        $this->assertStringNotContainsString('>MOC</option>', $html);
+    }
+
+    public function test_campus_field_label_reads_campus_slash_department(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        $formHtml = Livewire::test('agreement-form')->html();
+
+        $this->assertStringContainsString('Campus / Department', $formHtml);
+    }
+
+    public function test_type_validation_rejects_moc(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form')
+            ->set('type', 'MOC')
+            ->call('save')
+            ->assertHasErrors(['type']);
+    }
+
     public function test_sector_must_be_academic_or_industri(): void
     {
         $this->actingAs(User::factory()->legal()->create());
@@ -357,12 +386,16 @@ class AgreementFormTest extends TestCase
 
     public function test_switching_back_to_existing_restores_the_partner_dropdown(): void
     {
+        Partner::factory()->create(['name' => 'Restore Partner']);
+
         $this->actingAs(User::factory()->legal()->create());
 
         Livewire::test('agreement-form')
             ->set('partnerMode', 'new')
             ->set('partnerMode', 'existing')
-            ->assertSeeHtml('<select wire:model="partner_id"')
+            ->assertSeeHtml("wire:keydown.escape=\"closeDropdown('partner_id')\"")
+            ->call('toggleDropdown', 'partner_id')
+            ->assertSee('Restore Partner')
             ->assertDontSeeHtml('placeholder="Partner legal name"');
     }
 
@@ -412,6 +445,7 @@ class AgreementFormTest extends TestCase
 
         Livewire::test('agreement-form')
             ->set('picMode', 'existing')
+            ->call('toggleDropdown', 'pic_name')
             ->assertSee('Ahmad bin Osman');
     }
 
@@ -459,7 +493,173 @@ class AgreementFormTest extends TestCase
         $this->actingAs(User::factory()->legal()->create());
 
         Livewire::test('agreement-form')
+            ->call('toggleDropdown', 'campus_id')
             ->assertSee('ACTIVE')
             ->assertDontSee('TBD');
+    }
+
+    public function test_campus_dropdown_option_renders_code_in_bold(): void
+    {
+        Campus::create(['code' => 'MIIT', 'name' => 'MIIT Campus', 'is_active' => true, 'sort_order' => 1]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreement-form')
+            ->call('toggleDropdown', 'campus_id')
+            ->html();
+
+        $this->assertStringContainsString('<strong class="font-bold">MIIT</strong>', $html);
+    }
+
+    public function test_selecting_campus_via_dropdown_sets_value(): void
+    {
+        $campus = Campus::create(['code' => 'MIIT', 'name' => 'MIIT Campus', 'is_active' => true, 'sort_order' => 1]);
+        $partner = Partner::factory()->create();
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form')
+            ->set('partnerMode', 'existing')
+            ->set('partner_id', $partner->id)
+            ->call('selectDropdown', 'campus_id', (string) $campus->id)
+            ->assertSet('campus_id', $campus->id)
+            ->set('title', 'Dropdown Campus')
+            ->set('type', 'MOU')
+            ->set('document_status', 'pending')
+            ->set('project_status', 'not_started')
+            ->call('save')
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('agreements', [
+            'title' => 'Dropdown Campus',
+            'campus_id' => $campus->id,
+        ]);
+    }
+
+    public function test_selecting_partner_via_dropdown_sets_value(): void
+    {
+        $partner = Partner::factory()->create(['name' => 'Dropdown Partner']);
+        $campus = Campus::active()->first();
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form')
+            ->set('partnerMode', 'existing')
+            ->call('selectDropdown', 'partner_id', (string) $partner->id)
+            ->assertSet('partner_id', $partner->id)
+            ->set('title', 'Dropdown Partner Test')
+            ->set('type', 'MOU')
+            ->set('campus_id', $campus->id)
+            ->set('document_status', 'pending')
+            ->set('project_status', 'not_started')
+            ->call('save')
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('agreements', [
+            'title' => 'Dropdown Partner Test',
+            'partner_id' => $partner->id,
+        ]);
+    }
+
+    public function test_selecting_existing_pic_via_dropdown_sets_value(): void
+    {
+        Agreement::factory()->create(['pic_name' => 'Siti Aishah']);
+        $partner = Partner::factory()->create();
+        $campus = Campus::active()->first();
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form')
+            ->set('partnerMode', 'existing')
+            ->set('partner_id', $partner->id)
+            ->set('picMode', 'existing')
+            ->call('selectDropdown', 'pic_name', 'Siti Aishah')
+            ->assertSet('pic_name', 'Siti Aishah')
+            ->set('title', 'Dropdown PIC Test')
+            ->set('type', 'MOU')
+            ->set('campus_id', $campus->id)
+            ->set('document_status', 'pending')
+            ->set('project_status', 'not_started')
+            ->call('save')
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('agreements', [
+            'title' => 'Dropdown PIC Test',
+            'pic_name' => 'Siti Aishah',
+        ]);
+    }
+
+    public function test_selecting_no_pic_via_dropdown_clears_pic_name(): void
+    {
+        Agreement::factory()->create(['pic_name' => 'Siti Aishah']);
+        $partner = Partner::factory()->create();
+        $campus = Campus::active()->first();
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form')
+            ->set('partnerMode', 'existing')
+            ->set('partner_id', $partner->id)
+            ->set('picMode', 'existing')
+            ->call('selectDropdown', 'pic_name', '')
+            ->assertSet('pic_name', '')
+            ->set('title', 'No Pic Test')
+            ->set('type', 'MOU')
+            ->set('campus_id', $campus->id)
+            ->set('document_status', 'pending')
+            ->set('project_status', 'not_started')
+            ->call('save')
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('agreements', [
+            'title' => 'No Pic Test',
+            'pic_name' => null,
+        ]);
+    }
+
+    public function test_dropdown_open_state_can_be_toggled_and_closed(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        $component = Livewire::test('agreement-form');
+
+        $component->call('toggleDropdown', 'campus_id')
+            ->assertSet('dropdownOpen.campus_id', true);
+
+        $component->call('closeDropdown', 'campus_id')
+            ->assertSet('dropdownOpen.campus_id', false);
+    }
+
+    public function test_dropdown_component_has_click_outside_backdrop_when_open(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreement-form')
+            ->call('toggleDropdown', 'campus_id')
+            ->html();
+
+        $this->assertStringContainsString("wire:click=\"closeDropdown('campus_id')\"", $html);
+    }
+
+    public function test_dropdown_component_uses_escape_key_handler(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreement-form')->html();
+
+        $this->assertStringContainsString("wire:keydown.escape=\"closeDropdown('campus_id')\"", $html);
+        $this->assertStringContainsString("wire:keydown.escape=\"closeDropdown('partner_id')\"", $html);
+        $this->assertStringContainsString("wire:keydown.escape=\"closeDropdown('pic_name')\"", $html);
+    }
+
+    public function test_alpine_js_is_not_used_for_dropdowns(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreement-form')->html();
+
+        $this->assertStringNotContainsString('x-data', $html);
+        $this->assertStringNotContainsString('@click', $html);
+        $this->assertStringNotContainsString('x-show', $html);
     }
 }

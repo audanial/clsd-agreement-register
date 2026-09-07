@@ -5,6 +5,7 @@ namespace Tests\Feature\Agreement;
 use App\Models\Agreement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -134,5 +135,68 @@ class AgreementShowTest extends TestCase
         $this->get(route('agreements.show', $agreement))
             ->assertOk()
             ->assertDontSee('Change status');
+    }
+
+    public function test_legal_can_manually_archive_an_agreement_with_terminated_reason(): void
+    {
+        $agreement = Agreement::factory()->signed()->create();
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-show', ['agreement' => $agreement])
+            ->call('archive');
+
+        $agreement->refresh();
+
+        $this->assertNotNull($agreement->archived_at);
+        $this->assertSame('terminated', $agreement->archive_reason);
+        $this->assertDatabaseHas('agreement_activities', [
+            'agreement_id' => $agreement->id,
+            'type' => 'archived',
+        ]);
+    }
+
+    public function test_viewer_cannot_manually_archive_an_agreement(): void
+    {
+        $agreement = Agreement::factory()->signed()->create();
+
+        $this->actingAs(User::factory()->viewer()->create());
+
+        Livewire::test('agreement-show', ['agreement' => $agreement])
+            ->call('archive')
+            ->assertStatus(403);
+
+        $agreement->refresh();
+
+        $this->assertNull($agreement->archived_at);
+    }
+
+    public function test_an_already_archived_agreement_does_not_show_the_archive_action(): void
+    {
+        $agreement = Agreement::factory()->signed()->create([
+            'archived_at' => now()->subDay(),
+            'archive_reason' => 'expired',
+        ]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $this->get(route('agreements.show', $agreement))
+            ->assertOk()
+            ->assertDontSee('Archive this agreement');
+    }
+
+    public function test_manually_archived_agreement_is_excluded_from_the_scheduled_commands_update(): void
+    {
+        $terminated = Agreement::factory()->signed()->create([
+            'expiry_date' => today()->subDay(),
+            'archived_at' => now()->subDay(),
+            'archive_reason' => 'terminated',
+        ]);
+
+        Artisan::call('agreements:archive-expired');
+
+        $terminated->refresh();
+
+        $this->assertSame('terminated', $terminated->archive_reason);
     }
 }

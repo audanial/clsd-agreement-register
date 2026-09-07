@@ -73,7 +73,7 @@ new class extends Component
     #[Computed]
     public function types(): array
     {
-        return ['LOI', 'NDA', 'MOA', 'MOU', 'SEA', 'MOC', 'ADDENDUM'];
+        return ['LOI', 'NDA', 'MOA', 'MOU', 'SEA', 'ADDENDUM'];
     }
 
     #[Computed]
@@ -141,7 +141,7 @@ new class extends Component
             </div>
 
             <div>
-                <label class="block text-sm font-medium">Campus</label>
+                <label class="block text-sm font-medium">Campus / Department</label>
                 <select wire:model.live="campus" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm">
                     <option value="">All</option>
                     @foreach ($this->campuses as $c)
@@ -200,7 +200,7 @@ new class extends Component
     </div>
 
     <div class="rounded-lg bg-white shadow">
-        <table class="min-w-full divide-y divide-gray-400">
+        <table class="min-w-full divide-y divide-gray-400 border-l border-r border-gray-400">
             <thead class="bg-[#293D7A]">
                 <tr class="divide-x divide-gray-400">
                     <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">Title</th>
@@ -210,7 +210,7 @@ new class extends Component
                     <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">Document Status</th>
                     <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">Project Status</th>
                     <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">PIC</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">Campus</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white">Campus / Department</th>
                     <th class="px-4 py-3 text-left text-xs font-medium uppercase text-white"></th>
                 </tr>
             </thead>
@@ -235,7 +235,7 @@ new class extends Component
                             </div>
                         </td>
                         <td class="px-4 py-3 text-sm">{{ $agreement->pic_name ?? '—' }}</td>
-                        <td class="px-4 py-3 text-sm">{{ $agreement->campus?->code }}</td>
+                        <td class="px-4 py-3 text-sm"><strong class="font-bold">{{ $agreement->campus?->code }}</strong></td>
                         <td class="px-4 py-3 text-sm">
                             <a href="{{ route('agreements.show', $agreement) }}" class="text-indigo-600 hover:text-indigo-900">View</a>
                         </td>

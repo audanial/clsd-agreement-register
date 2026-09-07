@@ -84,6 +84,11 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
 - PIC self-service view: a future idea where PICs (external stakeholders) could log in and see only
   their own agreements. Explicitly not built in M6-4; requires a separate decision and scope. Logged 2 Sep 2026.
 
+- Archiving: `archived_at` and `archive_reason` are now genuinely populated for the first time in M8.
+  `archive_reason` currently has two values: `expired` (automatic) and `terminated` (manual). A future
+  `termination_basis` sub-field (breach / mutual agreement / termination for convenience / other) is
+  deferred until Legal confirms this granularity is needed. Logged 7 Sep 2026.
+
 - UI/UX polish and visual design pass — current M3 UI is functional but
   plain (default browser styling, minimal Tailwind). Worth a design pass
   once real users have used the MVP and given feedback on what's confusing

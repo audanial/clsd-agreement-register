@@ -220,7 +220,7 @@ class AgreementsIndexTest extends TestCase
         $headers = array_map('trim', array_map('strip_tags', $matches[1]));
 
         $this->assertSame(
-            ['Title', 'Partner', 'Duration', 'Scope', 'Document Status', 'Project Status', 'PIC', 'Campus', ''],
+            ['Title', 'Partner', 'Duration', 'Scope', 'Document Status', 'Project Status', 'PIC', 'Campus / Department', ''],
             $headers
         );
     }
@@ -303,7 +303,8 @@ class AgreementsIndexTest extends TestCase
         $this->assertStringContainsString('Without PIC', $html);
 
         $tableBody = strstr($html, '<tbody');
-        $this->assertSame(1, substr_count($tableBody, '—'));
+        preg_match('/<tr[^>]*>.*?Without PIC.*?<\/tr>/s', $tableBody, $withoutPicRow);
+        $this->assertStringContainsString('>—</td>', $withoutPicRow[0]);
     }
 
     public function test_search_still_matches_title_and_partner_only(): void
@@ -411,5 +412,48 @@ class AgreementsIndexTest extends TestCase
         Livewire::test('agreements-index', ['year' => '2024'])
             ->assertSee('Dated Agreement')
             ->assertDontSee('Undated Agreement');
+    }
+
+    public function test_show_archived_filter_now_surfaces_genuinely_archived_agreements(): void
+    {
+        Agreement::factory()->signed()->create(['title' => 'Active Agreement']);
+        Agreement::factory()->signed()->create([
+            'title' => 'Archived Agreement',
+            'archived_at' => now()->subDay(),
+            'archive_reason' => 'expired',
+        ]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreements-index', ['showArchived' => true])
+            ->assertSee('Archived Agreement')
+            ->assertDontSee('Active Agreement');
+    }
+
+    public function test_campus_code_renders_bold_in_the_register_list(): void
+    {
+        $campus = Campus::firstOrCreate(['code' => 'MFI'], ['name' => 'Malaysia France Institute', 'is_institute' => true]);
+
+        Agreement::factory()->signed()->create([
+            'title' => 'Bold Campus Test',
+            'campus_id' => $campus->id,
+        ]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreements-index')->html();
+
+        $this->assertStringContainsString('<td class="px-4 py-3 text-sm"><strong class="font-bold">MFI</strong></td>', $html);
+        $this->assertStringNotContainsString('<strong class="font-bold">MFI</strong> — Malaysia France Institute', $html);
+    }
+
+    public function test_campus_department_header_and_filter_label_are_renamed(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreements-index')->html();
+
+        $this->assertStringContainsString('>Campus / Department</th>', $html);
+        $this->assertStringContainsString('Campus / Department</label>', $html);
     }
 }

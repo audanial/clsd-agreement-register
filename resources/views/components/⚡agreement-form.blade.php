@@ -47,6 +47,8 @@ new class extends Component
 
     public string $notes = '';
 
+    public array $dropdownOpen = [];
+
     public function mount(?Agreement $agreement = null): void
     {
         $this->agreement = $agreement;
@@ -65,6 +67,22 @@ new class extends Component
             $this->scope = $agreement->scope ?? '';
             $this->notes = $agreement->notes ?? '';
         }
+    }
+
+    public function toggleDropdown(string $name): void
+    {
+        $this->dropdownOpen[$name] = ! ($this->dropdownOpen[$name] ?? false);
+    }
+
+    public function closeDropdown(string $name): void
+    {
+        $this->dropdownOpen[$name] = false;
+    }
+
+    public function selectDropdown(string $name, mixed $value): void
+    {
+        $this->{$name} = $value;
+        $this->dropdownOpen[$name] = false;
     }
 
     public function save(): void
@@ -113,7 +131,7 @@ new class extends Component
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:LOI,NDA,MOA,MOU,SEA,MOC,ADDENDUM'],
+            'type' => ['required', 'in:LOI,NDA,MOA,MOU,SEA,ADDENDUM'],
             'partner_id' => ['nullable', 'required_if:partnerMode,existing', 'exists:partners,id'],
             'newPartnerName' => ['nullable', 'required_if:partnerMode,new', 'string', 'max:255'],
             'newPartnerShortName' => ['nullable', 'string', 'max:100'],
@@ -199,6 +217,33 @@ new class extends Component
     }
 
     #[Computed]
+    public function campusOptions(): array
+    {
+        return $this->campuses->map(fn (Campus $campus) => [
+            'value' => $campus->id,
+            'label' => '<strong class="font-bold">'.e($campus->code).'</strong> — '.e($campus->name),
+        ])->all();
+    }
+
+    #[Computed]
+    public function partnerOptions(): array
+    {
+        return $this->partners->map(fn (Partner $partner) => [
+            'value' => $partner->id,
+            'label' => e($partner->name),
+        ])->all();
+    }
+
+    #[Computed]
+    public function picOptions(): array
+    {
+        return $this->existingPics
+            ->map(fn (string $name) => ['value' => $name, 'label' => e($name)])
+            ->prepend(['value' => '', 'label' => 'No PIC'])
+            ->all();
+    }
+
+    #[Computed]
     public function countries()
     {
         return Country::orderBy('name')->get();
@@ -246,7 +291,7 @@ new class extends Component
                 <label class="block text-sm font-medium">Type</label>
                 <select wire:model="type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                     <option value="">Select type</option>
-                    @foreach (['LOI', 'NDA', 'MOA', 'MOU', 'SEA', 'MOC', 'ADDENDUM'] as $t)
+                    @foreach (['LOI', 'NDA', 'MOA', 'MOU', 'SEA', 'ADDENDUM'] as $t)
                         <option value="{{ $t }}">{{ $t }}</option>
                     @endforeach
                 </select>
@@ -254,13 +299,14 @@ new class extends Component
             </div>
 
             <div>
-                <label class="block text-sm font-medium">Campus</label>
-                <select wire:model="campus_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                    <option value="">Select campus</option>
-                    @foreach ($this->campuses as $campus)
-                        <option value="{{ $campus->id }}">{{ $campus->code }} — {{ $campus->name }}</option>
-                    @endforeach
-                </select>
+                <label class="block text-sm font-medium">Campus / Department</label>
+                <x-dropdown-select
+                    name="campus_id"
+                    placeholder="Select campus / department"
+                    :options="$this->campusOptions"
+                    :value="$campus_id"
+                    :is-open="$dropdownOpen['campus_id'] ?? false"
+                />
                 @error('campus_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
         </div>
@@ -279,12 +325,13 @@ new class extends Component
             </div>
 
             @if ($partnerMode === 'existing')
-                <select wire:model="partner_id" class="mt-3 block w-full rounded-md border-gray-300 shadow-sm">
-                    <option value="">Select partner</option>
-                    @foreach ($this->partners as $partner)
-                        <option value="{{ $partner->id }}">{{ $partner->name }}</option>
-                    @endforeach
-                </select>
+                <x-dropdown-select
+                    name="partner_id"
+                    placeholder="Select partner"
+                    :options="$this->partnerOptions"
+                    :value="$partner_id"
+                    :is-open="$dropdownOpen['partner_id'] ?? false"
+                />
                 @error('partner_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             @else
                 <div class="mt-3 space-y-3">
@@ -334,12 +381,13 @@ new class extends Component
                 </div>
 
                 @if ($picMode === 'existing')
-                    <select wire:model="pic_name" class="mt-3 block w-full rounded-md border-gray-300 shadow-sm">
-                        <option value="">No PIC</option>
-                        @foreach ($this->existingPics as $name)
-                            <option value="{{ $name }}">{{ $name }}</option>
-                        @endforeach
-                    </select>
+                    <x-dropdown-select
+                        name="pic_name"
+                        placeholder="No PIC"
+                        :options="$this->picOptions"
+                        :value="$pic_name"
+                        :is-open="$dropdownOpen['pic_name'] ?? false"
+                    />
                 @else
                     <input wire:model="pic_name" type="text" placeholder="Full name, e.g. Ahmad bin Osman" class="mt-3 block w-full rounded-md border-gray-300 shadow-sm">
                 @endif

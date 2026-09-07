@@ -1844,10 +1844,196 @@ Login is rejected with the generic `auth.failed` message.
 - Running the seeder twice does not duplicate the "International" row.
 - Existing partners' `country_id` values are unchanged.
 
+ **Automated by**
+ `PartnerCountryTest::test_selecting_local_resolves_the_new_partners_country_to_malaysia`  
+ `PartnerCountryTest::test_selecting_international_resolves_the_new_partners_country_to_the_placeholder_row`  
+ `PartnerCountryTest::test_country_seeder_is_still_idempotent_with_the_new_row`  
+ `PartnerCountryTest::test_existing_partners_country_id_is_unaffected_by_this_change`
+
+ **Status** Pass (7 Sep 2026)
+
+---
+
+## 20. M8-3 — Archiving: automatic (expiry) and manual (early termination)
+
+### TC-072 — Expired agreements are automatically archived by the scheduled command
+
+| | |
+|---|---|
+| **Feature area** | Archiving |
+| **Business rule** | BR-35 — A daily scheduled command archives agreements whose `expiry_date` has passed, setting `archive_reason = 'expired'` and writing one activity entry per agreement |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | Agreements with past, future, null, and today's `expiry_date` exist; some are already archived |
+
+**Steps**
+1. Run `agreements:archive-expired`.
+2. Inspect archived agreements, their `archive_reason`, and activity feed entries.
+3. Run the command a second time.
+
+**Expected result**
+- Agreements with `expiry_date <= today()` and no `archived_at` are archived with reason `expired`.
+- An activity entry of type `archived` is written per newly archived agreement.
+- Already-archived agreements are untouched on the second run (no duplicate activities, no reason change).
+- Agreements with a null `expiry_date` are never archived by the command.
+
 **Automated by**
-`PartnerCountryTest::test_selecting_local_resolves_the_new_partners_country_to_malaysia`  
-`PartnerCountryTest::test_selecting_international_resolves_the_new_partners_country_to_the_placeholder_row`  
-`PartnerCountryTest::test_country_seeder_is_still_idempotent_with_the_new_row`  
-`PartnerCountryTest::test_existing_partners_country_id_is_unaffected_by_this_change`
+`ArchiveExpiredAgreementsTest::test_scheduled_command_archives_agreements_past_their_expiry_date`  
+`ArchiveExpiredAgreementsTest::test_scheduled_command_sets_archive_reason_to_expired`  
+`ArchiveExpiredAgreementsTest::test_scheduled_command_does_not_touch_already_archived_agreements`  
+`ArchiveExpiredAgreementsTest::test_scheduled_command_does_not_archive_an_agreement_with_a_null_expiry_date`  
+`ArchiveExpiredAgreementsTest::test_scheduled_command_boundary_matches_is_expired`  
+`ArchiveExpiredAgreementsTest::test_scheduled_command_writes_an_activity_entry_per_archived_agreement`
+
+**Status** Pass (7 Sep 2026)
+
+---
+
+### TC-073 — Legal and admin can manually archive an agreement as terminated
+
+| | |
+|---|---|
+| **Feature area** | Archiving |
+| **Business rule** | BR-36 — Users with write access can manually archive an agreement, setting `archive_reason = 'terminated'`; viewers cannot; already-archived agreements hide the action |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | Active and archived agreements exist; admin/legal/viewer users exist |
+
+**Steps**
+1. As legal, call the archive action on an active agreement.
+2. As viewer, attempt the same action.
+3. Render the detail page for an already-archived agreement.
+4. Create a manually-terminated agreement whose `expiry_date` has also passed, then run the scheduled command.
+
+**Expected result**
+- Legal action sets `archived_at` and `archive_reason = 'terminated'` and writes an activity entry.
+- Viewer action is rejected (403) and leaves the agreement unarchived.
+- The archive action is hidden for already-archived agreements.
+- A manually-terminated agreement is protected from being relabeled `expired` by the scheduled command.
+
+**Automated by**
+`AgreementShowTest::test_legal_can_manually_archive_an_agreement_with_terminated_reason`  
+`AgreementShowTest::test_viewer_cannot_manually_archive_an_agreement`  
+`AgreementShowTest::test_an_already_archived_agreement_does_not_show_the_archive_action`  
+`AgreementShowTest::test_manually_archived_agreement_is_excluded_from_the_scheduled_commands_update`
+
+**Status** Pass (7 Sep 2026)
+
+---
+
+### TC-074 — The Show Archived filter surfaces genuinely archived agreements
+
+| | |
+|---|---|
+| **Feature area** | List, Search & Filtering |
+| **Business rule** | BR-06 — The existing `Show Archived` filter toggles the `archived()` / `notArchived()` scopes |
+| **Priority** | Medium |
+| **Type** | Automated |
+| **Preconditions** | One active and one archived agreement exist |
+
+**Steps**
+1. Render the agreements index with `showArchived = true`.
+
+**Expected result**
+- The archived agreement is shown; the active agreement is not.
+
+**Automated by**
+`AgreementsIndexTest::test_show_archived_filter_now_surfaces_genuinely_archived_agreements`
+
+**Status** Pass (7 Sep 2026)
+
+---
+
+## 21. M9 — Custom dropdown component, bold fix, Campus/Department rename
+
+### TC-075 — Campus code renders visibly bold in the Register list
+
+| | |
+|---|---|
+| **Feature area** | List, Search & Filtering |
+| **Business rule** | BR-37 — Campus code is emphasised in the Register list so owners can be scanned quickly |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | An agreement exists with a campus assigned |
+
+**Steps**
+1. Render the agreements index.
+2. Inspect the Campus/Department cell for the agreement.
+
+**Expected result**
+The campus code is wrapped in a `<strong class="font-bold">` tag; the full institute name is in normal weight.
+
+**Automated by**
+`AgreementsIndexTest::test_campus_code_renders_bold_in_the_register_list`
+
+**Status** Pass (7 Sep 2026)
+
+---
+
+### TC-076 — The campus owner field is labelled "Campus / Department" everywhere
+
+| | |
+|---|---|
+| **Feature area** | Agreement Creation & Validation / List, Search & Filtering |
+| **Business rule** | BR-38 — User-facing label reflects that the list now includes departments/centres, not only physical campuses |
+| **Priority** | Medium |
+| **Type** | Automated |
+| **Preconditions** | None |
+
+**Steps**
+1. Render the agreements index (header and filter).
+2. Render the create/edit agreement form.
+3. Render the agreement detail page.
+
+**Expected result**
+All visible labels that previously read "Campus" now read "Campus / Department". Internal table/model/column names are unchanged.
+
+**Automated by**
+`AgreementsIndexTest::test_campus_department_header_and_filter_label_are_renamed`
+`AgreementFormTest::test_campus_field_label_reads_campus_slash_department`
+
+**Status** Pass (7 Sep 2026)
+
+---
+
+### TC-077 — A custom Livewire-only dropdown replaces native selects where per-option formatting is needed
+
+| | |
+|---|---|
+| **Feature area** | Agreement Creation & Validation |
+| **Business rule** | BR-39 — Custom-rendered dropdowns are used wherever per-option formatting is required, because native `<option>` styling is not reliably supported by browsers |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | Partners, campuses, and agreements with PIC names exist; Alpine.js is not used in this project |
+
+**Steps**
+1. Render the create/edit form.
+2. Open each custom dropdown (Campus/Department, Partner-existing, PIC-existing).
+3. Select options in each dropdown.
+4. Switch Partner and PIC to "New" mode and back to "Existing".
+5. Open the edit form for an agreement with a campus and PIC already set.
+
+**Expected result**
+- Campus/Department options render the code in bold and the name in normal weight.
+- Partner and PIC options render as plain text.
+- Selecting an option sets the bound Livewire property and the form still saves correctly.
+- Existing/new toggles are unaffected.
+- Edit mode pre-selects the existing campus and PIC values.
+- Dropdowns can be opened/closed and support click-outside and Escape-to-close without Alpine.js.
+
+**Automated by**
+`AgreementFormTest::test_campus_dropdown_option_renders_code_in_bold`
+`AgreementFormTest::test_selecting_campus_via_dropdown_sets_value`
+`AgreementFormTest::test_selecting_partner_via_dropdown_sets_value`
+`AgreementFormTest::test_selecting_existing_pic_via_dropdown_sets_value`
+`AgreementFormTest::test_selecting_no_pic_via_dropdown_clears_pic_name`
+`AgreementFormTest::test_dropdown_open_state_can_be_toggled_and_closed`
+`AgreementFormTest::test_dropdown_component_has_click_outside_backdrop_when_open`
+`AgreementFormTest::test_dropdown_component_uses_escape_key_handler`
+`AgreementFormTest::test_alpine_js_is_not_used_for_dropdowns`
+`AgreementFormTest::test_switching_back_to_existing_restores_the_partner_dropdown`
+`AgreementFormTest::test_switching_to_new_partner_mode_reveals_the_partner_name_fields`
+`AgreementFormTest::test_edit_form_retains_an_existing_pic_name`
+`CampusSeederTest::test_new_campuses_appear_in_the_agreement_forms_campus_dropdown`
 
 **Status** Pass (7 Sep 2026)

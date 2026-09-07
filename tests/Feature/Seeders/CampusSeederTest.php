@@ -39,7 +39,9 @@ class CampusSeederTest extends TestCase
 
         $this->actingAs(User::factory()->legal()->create());
 
-        $html = Livewire::test('agreement-form')->html();
+        $html = Livewire::test('agreement-form')
+            ->call('toggleDropdown', 'campus_id')
+            ->html();
 
         $this->assertStringContainsString('MCI', $html);
         $this->assertStringContainsString('UniKL Malaysia China Institute', $html);

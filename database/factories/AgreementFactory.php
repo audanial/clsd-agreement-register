@@ -16,7 +16,7 @@ class AgreementFactory extends Factory
     {
         return [
             'title' => fake()->sentence(),
-            'type' => fake()->randomElement(['LOI', 'NDA', 'MOA', 'MOU', 'SEA', 'MOC', 'ADDENDUM']),
+            'type' => fake()->randomElement(['LOI', 'NDA', 'MOA', 'MOU', 'SEA', 'ADDENDUM']),
             'partner_id' => Partner::factory(),
             'campus_id' => fn () => Campus::firstOrCreate(
                 ['code' => 'TBD'],

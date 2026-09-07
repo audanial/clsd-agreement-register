@@ -13,11 +13,53 @@ new class extends Component
 
     public string $project_status = '';
 
+    public bool $confirmingArchive = false;
+
     public function mount(Agreement $agreement): void
     {
         $this->agreement = $agreement;
         $this->document_status = $agreement->document_status;
         $this->project_status = $agreement->project_status;
+    }
+
+    public function confirmArchive(): void
+    {
+        if (! auth()->user()->canWrite()) {
+            abort(403);
+        }
+
+        $this->confirmingArchive = true;
+    }
+
+    public function cancelArchive(): void
+    {
+        $this->confirmingArchive = false;
+    }
+
+    public function archive(): void
+    {
+        if (! auth()->user()->canWrite()) {
+            abort(403);
+        }
+
+        if ($this->agreement->archived_at !== null) {
+            return;
+        }
+
+        $this->agreement->archived_at = now();
+        $this->agreement->archive_reason = 'terminated';
+        $this->agreement->save();
+
+        app(RecordAgreementActivity::class)(
+            $this->agreement,
+            'archived',
+            'Manually archived: agreement terminated',
+            ['reason' => 'terminated']
+        );
+
+        $this->confirmingArchive = false;
+
+        session()->flash('status', 'Agreement archived.');
     }
 
     public function updateStatus(): void
@@ -81,7 +123,7 @@ new class extends Component
             </div>
 
             <div>
-                <dt class="text-sm font-medium text-gray-500">Campus</dt>
+                <dt class="text-sm font-medium text-gray-500">Campus / Department</dt>
                 <dd class="mt-1 text-sm">{{ $agreement->campus?->code }} — {{ $agreement->campus?->name }}</dd>
             </div>
 
@@ -137,6 +179,16 @@ new class extends Component
                     </div>
                 </dd>
             </div>
+
+            @if ($agreement->archived_at)
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Archived</dt>
+                    <dd class="mt-1 text-sm">
+                        <x-date :value="$agreement->archived_at" />
+                        <span class="ml-1 text-gray-500">({{ $agreement->archive_reason === 'expired' ? 'Expired' : 'Terminated' }})</span>
+                    </dd>
+                </div>
+            @endif
         </dl>
 
         @if ($agreement->scope)
@@ -181,6 +233,33 @@ new class extends Component
                     Update status
                 </button>
             </form>
+        </div>
+    @endif
+
+    @if (auth()->user()->canWrite() && ! $agreement->archived_at)
+        <div class="rounded-lg bg-white p-6 shadow">
+            <h2 class="mb-4 text-lg font-medium">Archive agreement</h2>
+
+            @if (! $confirmingArchive)
+                <p class="mb-4 text-sm text-gray-600">
+                    Use this for early termination (e.g. breach of terms). The agreement will be marked as archived with reason "Terminated".
+                </p>
+                <button type="button" wire:click="confirmArchive" class="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700">
+                    Archive this agreement
+                </button>
+            @else
+                <p class="mb-4 text-sm text-gray-800">
+                    Are you sure? This agreement will be archived as <strong>Terminated</strong>.
+                </p>
+                <div class="flex items-center gap-3">
+                    <button type="button" wire:click="archive" class="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700">
+                        Confirm archive
+                    </button>
+                    <button type="button" wire:click="cancelArchive" class="text-sm text-gray-600 hover:text-gray-900">
+                        Cancel
+                    </button>
+                </div>
+            @endif
         </div>
     @endif
 

@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'agreement_date', 'expiry_date',
     'received_from_po_at', 'board_approved_at', 'signed_by_unikl_at', 'sent_to_partner_at', 'signed_date',
     'document_status', 'project_status', 'project_status_updated_at',
+    'archive_reason',
     'scope', 'notes',
 ])]
 #[ScopedBy(HidePendingFromNonLegalScope::class)]
