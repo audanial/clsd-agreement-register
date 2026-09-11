@@ -47,6 +47,39 @@ return [
             'report' => false,
         ],
 
+        /*
+         * Private & Confidential documents for the Legal Submission Portal.
+         *
+         * 'serve' => false is deliberate and load-bearing: with 'serve' => true
+         * Laravel registers GET+PUT /storage/{path} routes for a local disk, which
+         * hand out files to anyone holding a signed URL — no per-user authorization
+         * and no audit entry. P&C documents are served ONLY through a controller
+         * that authorises, logs the download, then streams the bytes. Never call
+         * Storage::url() or temporaryUrl() on this disk.
+         *
+         * 'throw' => true also differs from the disks above, on purpose. A register
+         * row that silently fails to save is a bug; a legal agreement that silently
+         * fails to save is a lost document.
+         *
+         * Driver is env-driven so local development uses the private local disk and
+         * production can move to an S3-compatible bucket by changing .env only. Each
+         * document row records the disk it was written to, so a later switch does not
+         * strand files already uploaded.
+         */
+        'documents' => [
+            'driver' => env('DOCUMENTS_DISK_DRIVER', 'local'),
+            'root' => storage_path('app/private/documents'),
+            'key' => env('DOCUMENTS_AWS_ACCESS_KEY_ID'),
+            'secret' => env('DOCUMENTS_AWS_SECRET_ACCESS_KEY'),
+            'region' => env('DOCUMENTS_AWS_DEFAULT_REGION'),
+            'bucket' => env('DOCUMENTS_AWS_BUCKET'),
+            'endpoint' => env('DOCUMENTS_AWS_ENDPOINT'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

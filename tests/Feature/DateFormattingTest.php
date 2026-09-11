@@ -30,6 +30,40 @@ class DateFormattingTest extends TestCase
         $this->assertStringNotContainsString('01 Jan 1970', $html);
     }
 
+    public function test_the_datetime_component_renders_malaysian_time(): void
+    {
+        // 02:24 UTC is 10:24 in Kuala Lumpur (UTC+8) on the same day.
+        $html = view('components.datetime', ['value' => Carbon::parse('2026-09-09 02:24:00', 'UTC')])->render();
+
+        $this->assertStringContainsString('9 Sep 2026, 10:24 AM', $html);
+    }
+
+    public function test_the_datetime_component_rolls_the_date_forward_across_midnight_utc(): void
+    {
+        // 18:00 UTC on the 8th is 02:00 on the 9th in Kuala Lumpur.
+        $html = view('components.datetime', ['value' => Carbon::parse('2026-09-08 18:00:00', 'UTC')])->render();
+
+        $this->assertStringContainsString('9 Sep 2026, 2:00 AM', $html);
+    }
+
+    public function test_the_datetime_component_renders_a_dash_for_null(): void
+    {
+        $html = view('components.datetime', ['value' => null])->render();
+
+        $this->assertStringContainsString('—', $html);
+        $this->assertStringNotContainsString('1970', $html);
+    }
+
+    /**
+     * Timestamps are stored in UTC and converted only for display. Changing
+     * APP_TIMEZONE would re-interpret every timestamp already in production and
+     * disturb the day-boundary tests, so pin the setting here.
+     */
+    public function test_app_timezone_is_still_utc(): void
+    {
+        $this->assertSame('UTC', config('app.timezone'));
+    }
+
     public function test_no_view_renders_a_month_first_date_format(): void
     {
         $files = app(Filesystem::class)->allFiles(resource_path('views'));

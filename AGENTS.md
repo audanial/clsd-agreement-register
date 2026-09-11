@@ -13,7 +13,8 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
 ## Gotchas
 
 - `laravel/pao` is installed: when it detects an AI agent, `php artisan test` prints compact JSON (`{"tool":"phpunit","result":"passed",...}`) instead of the usual pretty output. Parse the JSON; don't re-run expecting normal output.
-- Livewire 4, not 3: `php artisan make:livewire Foo` creates a **single-file component** at `resources/views/components/⚡foo.blade.php` (anonymous class + Blade in one file, with a literal `⚡` emoji prefix in the filename). Use `--mfc` or `--class` only if the class+view split is explicitly wanted. Do not scaffold `app/Livewire/*.php` by habit.
+- Livewire 4, not 3: `php artisan make:livewire Foo` creates a **single-file component** (anonymous class + Blade in one file). Use `--mfc` or `--class` only if the class+view split is explicitly wanted. Do not scaffold `app/Livewire/*.php` by habit.
+- **Livewire components live in `resources/views/livewire/`, with no `⚡` emoji prefix** (LP0 / S20 decision, 10 Sep 2026). `config/livewire.php` is published with `make_command.emoji => false`, so `make:livewire` produces the right filename without a flag. `resources/views/components/` is for **anonymous Blade components only** (`<x-date>`, `<x-badges.*>`) — that directory is registered as both a Livewire location and Laravel's anonymous-component path, so keeping the two populations separate is what makes it obvious which kind a file is. The emoji was never required: `Finder::normalizeName()` strips it, and `Finder::resolveSingleFileComponentPath()` falls back to plain filenames. `tests/Feature/Livewire/ComponentResolutionTest.php` enforces this.
 - `.npmrc` sets `ignore-scripts=true` — npm lifecycle scripts never run.
 - `vite.config.js` downloads the "Instrument Sans" font from Bunny Fonts at dev/build time — needs network access.
 - Windows + PowerShell environment.
@@ -28,7 +29,14 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
 
 - `agreements.campus_id` is NOT nullable on purpose. The seeded `TBD` campus row is the catch-all for unknown ownership (see `CampusSeeder`); never make `campus_id` nullable.
 - `document_status = pending` means "still in Legal vetting" and is intended to be hidden from non-Legal users via a global scope (per migration comment).
-- User roles are a plain enum `admin|legal|viewer` on `users.role`. The migration explicitly says NOT to add spatie/laravel-permission unless per-action granularity becomes necessary.
+- User roles are `admin|legal|viewer|requester` on `users.role`. Since LP0 the column is a plain
+  `string`, not an enum — on SQLite an enum is a CHECK constraint that cannot be altered without
+  rebuilding the whole table, so this was made the last such rebuild. Valid values are enforced by
+  the `in:` rule in the user-manager component and by `EnsureUserHasRole`. Still NOT a case for
+  spatie/laravel-permission unless per-action granularity becomes necessary.
+- `requester` = non-Legal staff who submit agreement requests through the Legal Submission Portal.
+  They have **no access to the Agreement Register at all** — the register routes are gated
+  `role:admin,legal,viewer`. Do not loosen that gate.
 - `agreements.expiry_date = null` means indefinite/until-completion, not missing data. Most date columns are nullable because historical imports lack them.
 - `php artisan db:seed` runs only `CampusSeeder` (idempotent `updateOrInsert`): 12 UniKL institutes + central units + `TBD`. `countries.is_domestic` drives the Dalam/Luar Negara display.
 
@@ -72,6 +80,32 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
   practice.
 - Ms. Haniza departed Legal 26 Aug 2026; Intan (Legal Executive) is the
   confirmed handover contact and system owner going forward.
+
+## LP0 — Legal Submission Portal foundation (10 Sep 2026) — implemented
+
+Groundwork only. No portal feature shipped: no `submissions` table, no uploads, no portal pages.
+The full architecture report and the LP1–LP6 roadmap live in the LP0 plan document.
+
+- **Livewire role middleware is now persistent.** `AppServiceProvider` registers
+  `EnsureUserHasRole` via `Livewire::addPersistentMiddleware()`. Livewire only re-runs an
+  allow-list of middleware on `/livewire/update`, and our `role:` alias was not on it — so a route
+  guarded only by middleware protected the initial page load and nothing else. **Verified
+  exploitable before the fix:** with the component's own check removed, a `legal`, `viewer` or
+  `requester` account could each create an **admin** user through `user-manager`. Persistent
+  middleware is defence in depth, NOT a licence to skip in-method checks.
+- **Every Livewire action authorises for itself.** `user-manager`'s `create()` and `toggle()` now
+  call `abort_unless(...->canManageUsers(), 403)`. Blade `@if` blocks are presentation, never the
+  control. Follow this in every new component.
+- **The Agreement Register is role-gated** (`role:admin,legal,viewer`), nested inside the `auth`
+  group so guests still redirect to `/login` rather than getting a 403.
+- **`documents` disk** added for P&C files: private, `serve => false`, `throw => true`, driver from
+  `DOCUMENTS_DISK_DRIVER`. `serve => false` is load-bearing — `serve => true` registers
+  `/storage/{path}` routes that hand files to anyone with a signed URL, with no per-user check and
+  no audit entry. Never call `Storage::url()`/`temporaryUrl()` on it; downloads go through a
+  controller that authorises, logs, then streams.
+- **`<x-datetime>`** renders Malaysian time for audit timestamps. `config/app.php` timezone stays
+  `UTC` deliberately — changing it would re-interpret every timestamp already in production and
+  disturb the M5-8 boundary tests. Convert at display time only.
 
 ## Future considerations (not yet scoped/planned)
 

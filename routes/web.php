@@ -21,12 +21,19 @@ Route::middleware('auth')->group(function () {
         Route::livewire('/users', 'user-manager')->name('users.index');
     });
 
-    Route::livewire('/agreements', 'agreements-index')->name('agreements.index');
+    // The Agreement Register is Legal-facing. Requesters use the Legal Submission
+    // Portal and must never reach the register — hence an explicit role gate here
+    // rather than relying on `auth` alone. Nested inside the `auth` group on
+    // purpose: `auth` runs first, so guests are still redirected to /login rather
+    // than getting a 403 from EnsureUserHasRole.
+    Route::middleware('role:admin,legal,viewer')->group(function () {
+        Route::livewire('/agreements', 'agreements-index')->name('agreements.index');
 
-    Route::middleware('role:admin,legal')->group(function () {
-        Route::livewire('/agreements/create', 'agreement-form')->name('agreements.create');
-        Route::livewire('/agreements/{agreement}/edit', 'agreement-form')->name('agreements.edit');
+        Route::middleware('role:admin,legal')->group(function () {
+            Route::livewire('/agreements/create', 'agreement-form')->name('agreements.create');
+            Route::livewire('/agreements/{agreement}/edit', 'agreement-form')->name('agreements.edit');
+        });
+
+        Route::livewire('/agreements/{agreement}', 'agreement-show')->name('agreements.show');
     });
-
-    Route::livewire('/agreements/{agreement}', 'agreement-show')->name('agreements.show');
 });

@@ -22,10 +22,16 @@ new class extends Component
 
     public function create(): void
     {
+        // The route's `role:admin` middleware guards the initial page load, but
+        // Livewire does not re-run it on every /livewire/update request unless it
+        // is registered as persistent middleware. Authorise here too — the Blade
+        // @if below is presentation, never the control.
+        abort_unless(auth()->user()?->canManageUsers(), 403);
+
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
-            'role' => ['required', 'in:admin,legal,viewer'],
+            'role' => ['required', 'in:admin,legal,viewer,requester'],
             'password' => ['required', 'string', 'min:8'],
         ]);
 
@@ -42,6 +48,8 @@ new class extends Component
 
     public function toggle(int $userId): void
     {
+        abort_unless(auth()->user()?->canManageUsers(), 403);
+
         if ($userId === auth()->id()) {
             return;
         }
@@ -82,6 +90,7 @@ new class extends Component
                         <option value="admin">Admin</option>
                         <option value="legal">Legal</option>
                         <option value="viewer">Viewer</option>
+                        <option value="requester">Requester</option>
                     </select>
                     @error('role') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>

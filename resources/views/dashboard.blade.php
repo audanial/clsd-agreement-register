@@ -12,10 +12,18 @@
                 <span class="rounded bg-gray-200 px-2 py-1 text-sm">{{ auth()->user()->role }}</span>
             </p>
 
+            @unless (auth()->user()->canAccessRegister())
+                <p class="mt-4 text-sm text-gray-600">
+                    Your account is set up for submitting agreement requests to Legal.
+                </p>
+            @endunless
+
             <div class="mt-6 flex gap-3">
-                <a href="{{ route('agreements.index') }}" class="rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">
-                    Open register
-                </a>
+                @if (auth()->user()->canAccessRegister())
+                    <a href="{{ route('agreements.index') }}" class="rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">
+                        Open register
+                    </a>
+                @endif
 
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf

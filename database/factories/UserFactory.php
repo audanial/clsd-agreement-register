@@ -94,4 +94,14 @@ class UserFactory extends Factory
             'role' => 'viewer',
         ]);
     }
+
+    /**
+     * Set the user's role to requester (Legal Submission Portal submitter).
+     */
+    public function requester(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'requester',
+        ]);
+    }
 }

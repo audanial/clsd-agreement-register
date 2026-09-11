@@ -48,9 +48,45 @@ class User extends Authenticatable
         return $this->role === 'viewer';
     }
 
+    /**
+     * Non-Legal UniKL staff who submit agreement requests through the Legal
+     * Submission Portal. Sees only their own submissions; never the register.
+     */
+    public function isRequester(): bool
+    {
+        return $this->role === 'requester';
+    }
+
+    /**
+     * Anyone inside Legal — the people who vet agreements and review submissions.
+     */
+    public function isLegalStaff(): bool
+    {
+        return $this->isAdmin() || $this->isLegal();
+    }
+
     public function canSeePending(): bool
     {
         return $this->isAdmin() || $this->isLegal();
+    }
+
+    /**
+     * Access to the Agreement Register.
+     *
+     * Deliberately an allow-list, not `! isRequester()`: a role added later is
+     * denied the register by default and has to be granted it on purpose.
+     */
+    public function canAccessRegister(): bool
+    {
+        return in_array($this->role, ['admin', 'legal', 'viewer'], true);
+    }
+
+    /**
+     * Access to the Legal Submission Portal.
+     */
+    public function canAccessPortal(): bool
+    {
+        return in_array($this->role, ['admin', 'legal', 'requester'], true);
     }
 
     public function canWrite(): bool

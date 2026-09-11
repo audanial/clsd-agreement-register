@@ -16,7 +16,9 @@
             <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
                 <a href="{{ route('dashboard') }}" class="font-semibold">CLSD Agreement Register</a>
                 <div class="flex items-center gap-4 text-sm">
-                    <a href="{{ route('agreements.index') }}" class="hover:text-gray-300">Register</a>
+                    @if (auth()->user()->canAccessRegister())
+                        <a href="{{ route('agreements.index') }}" class="hover:text-gray-300">Register</a>
+                    @endif
                     <a href="{{ route('dashboard') }}" class="hover:text-gray-300">Dashboard</a>
                     @if (auth()->user()->canManageUsers())
                         <a href="{{ route('users.index') }}" class="hover:text-gray-300">Users</a>
