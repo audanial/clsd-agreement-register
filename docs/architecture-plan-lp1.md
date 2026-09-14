@@ -1,6 +1,6 @@
 # LP1 — Legal Submission Portal Foundation
 
-> **Status:** Approved by Amir on 14 Sep 2026; ready for LP1-A implementation.
+> **Status:** Approved by Amir on 14 Sep 2026. Amendment 1 approved by Amir on 14 Sep 2026; see S20.
 > **Date:** 14 Sep 2026
 > **Scope:** Submission records, creation, role-aware lists, detail visibility, and creation audit history.
 > **Repository:** Existing CLSD Agreement Register; Laravel 13, Livewire 4, SQLite locally, MySQL 8.4 in production.
@@ -25,6 +25,8 @@ The repository already provides the foundations LP1 needs:
 - reusable campuses and the `Campus::active()` scope;
 - an established activity-recording pattern; and
 - PHPUnit feature tests using in-memory SQLite.
+
+Active-account enforcement currently applies at login only. A deactivated user may keep an already-authenticated session; this pre-existing gap is recorded as DEF-013 in `docs/qa/defect-log.md` and is not fixed in LP1-A.
 
 LP1 should introduce a separate `Submission` domain rather than add fields to `Agreement`. A submission has a different owner, audience, lifecycle, and confidentiality boundary. Keeping the domains separate also prevents Requesting Staff from accidentally gaining a path into the Agreement Register.
 
@@ -68,7 +70,7 @@ The recommended first form is intentionally short:
 | Submission title | `title` | Required, string, maximum 255 | Gives the queue a useful human-readable identifier. |
 | Campus / Department | `campus_id` | Required active campus; exclude `TBD` | New requests should identify their real originating unit; `TBD` exists for incomplete historical register data. |
 | Partner / organisation | `partner_name` | Required, string, maximum 255 | Free text avoids exposing or modifying the Agreement Register's curated partners table. |
-| Agreement type | `agreement_type` | Nullable known type | Requesting Staff may select LOI, NDA, MOA, MOU, SEA, MOC, or ADDENDUM; “Not sure” stores `null`. Legal can classify it later. |
+| Agreement type | `agreement_type` | Nullable known type | Requesting Staff may select LOI, NDA, MOA, MOU, SEA, or ADDENDUM; “Not sure” stores `null`. Legal can classify it later. `MOC` is excluded: it remains only in the legacy `agreements.type` database enum, and the current Agreement form deliberately rejects it (amended 14 Sep 2026; see S20). |
 | Purpose / scope | `purpose` | Required text with an explicit maximum | Gives Legal enough context without turning LP1 into a long questionnaire. |
 
 Recommended `purpose` maximum: 5,000 characters. This is large enough for a useful explanation while limiting accidental pasting of an entire document into the form.
@@ -93,11 +95,14 @@ Alternative: link `partner_id` directly to the existing partners table. That wou
 | `submitted_at` | Timestamp |
 | `created_at`, `updated_at` | Laravel timestamps |
 
-Recommended indexes:
+Required indexes:
 
-- `created_by, created_at` for “My Submissions”;
-- `status, created_at` for the Legal queue; and
-- foreign-key indexes provided for `campus_id` and `agreement_id`.
+- `created_by, created_at` for “My Submissions” (its leading column also covers the `created_by` foreign key);
+- `status, created_at` for the Legal queue;
+- an explicit single-column index on `campus_id`; and
+- an explicit single-column index on `agreement_id`.
+
+Foreign-key index rule (amended 14 Sep 2026; see S20): MySQL InnoDB automatically indexes foreign-key columns, but SQLite does not. Every foreign-key column must therefore have an explicit index unless it is already the leading column of a composite index on the same table. Do not rely on the database engine to supply it.
 
 `status` should be a plain string, not a database enum. The repository already had to rebuild `users` to escape an inflexible enum. Application validation and controlled transition methods provide safer evolution across SQLite and MySQL.
 
@@ -108,14 +113,21 @@ Recommended indexes:
 | Column | Type and rule |
 |---|---|
 | `id` | Primary key |
-| `submission_id` | Required foreign key to `submissions`; owned child |
+| `submission_id` | Required foreign key to `submissions`; `restrictOnDelete()` |
 | `user_id` | Nullable foreign key to `users`; `nullOnDelete()` |
 | `type` | String |
 | `description` | Human-readable string |
 | `meta` | Nullable JSON |
 | `created_at`, `updated_at` | Laravel timestamps |
 
-Add an index on `submission_id, created_at`. The initial event type is `submission_created`. Later milestones add status, message, note, revision, document, download, and completion events without changing the table shape.
+Required indexes:
+
+- `submission_id, created_at` (its leading column also covers the `submission_id` foreign key); and
+- an explicit single-column index on `user_id`.
+
+The initial event type is `submission_created`. Later milestones add status, message, note, revision, document, download, and completion events without changing the table shape.
+
+`submission_id` uses `restrictOnDelete()`, not `cascadeOnDelete()` (amended 14 Sep 2026; see S20). A submission that has audit history cannot be hard-deleted, so no deletion — through code, a console session, or a future feature — can silently erase that history. This is a deliberate exception to the repository convention of cascading owned children: `agreement_activities` can safely cascade because `Agreement` uses soft deletes, whereas `Submission` has no soft deletes and no deletion workflow in V1.
 
 ## S7. Models and relationships
 
@@ -139,6 +151,19 @@ Recommended user relations:
 
 - `User::submissions()` for requests created by that user.
 
+Required casts on `Submission` (amended 14 Sep 2026; see S20):
+
+| Attribute | Cast |
+|---|---|
+| `created_by` | `integer` |
+| `campus_id` | `integer` |
+| `agreement_id` | `integer` (remains `null` when unset) |
+| `submitted_at` | `datetime` |
+
+The policy compares `created_by` with the authenticated user's ID using strict comparison. Explicit integer casts guarantee identical types whether a model is built in memory, refetched from SQLite, or refetched from MySQL, so ownership checks do not depend on database-driver fetch behaviour.
+
+Mass assignment: `created_by`, `status`, `submitted_at`, and `agreement_id` must not be fillable. Only trusted creation code assigns them.
+
 ## S8. Authorization model
 
 Create `SubmissionPolicy`; the repository currently has no policy layer, so this becomes the first record-level authorization policy.
@@ -150,6 +175,8 @@ Create `SubmissionPolicy`; the repository currently has no policy layer, so this
 | `create` | Yes | No | No | No |
 | `update` | No in LP1 | No in LP1 | No in LP1 | No |
 | `delete` | No | No | No | No |
+
+Every ability denies an inactive user, whatever their role. This includes inactive Admin, Legal, and Requesting Staff accounts.
 
 For an authenticated Requesting Staff user who guesses another submission ID, the policy should deny as not found (`404`), not reveal that the record exists. Viewer access is rejected by role middleware with `403` before record authorization.
 
@@ -167,20 +194,27 @@ Alternative: a global scope that automatically hides other requesters' submissio
 
 ## S9. Creation transaction and audit
 
-Submission creation should run in one database transaction:
+Submission creation happens at one trusted creation boundary: an application action (`App\Actions\CreateSubmission`). The LP1-B Livewire form calls this action; it does not duplicate its rules or write submissions itself.
 
-1. Authorize `create`.
-2. Validate input server-side.
-3. Ignore any client-supplied owner, status, submission timestamp, or agreement link.
-4. Set `created_by` from the authenticated user.
-5. Set `status` to `pending` in trusted application code.
-6. Set `submitted_at` from the server clock.
-7. Create the `submission_created` activity through a small `RecordSubmissionActivity` action.
-8. Commit both records together and redirect to the new detail page.
+The creation boundary (amended 14 Sep 2026; see S20):
+
+1. Derives the owner from the authenticated session. It accepts no `User` argument and no owner field. If no user is authenticated, it denies.
+2. Authorizes `create` for that authenticated user.
+3. Validates every LP1 submission field with the S13 rules. Validation runs inside the boundary, so every caller is protected, not only the LP1-B form.
+4. Uses only validated values, and ignores any caller-supplied owner, status, submission timestamp, or agreement link.
+5. Opens one database transaction.
+6. Sets `created_by` from the authenticated user.
+7. Sets `status` to `pending` in trusted application code.
+8. Sets `submitted_at` from the server clock.
+9. Leaves `agreement_id` unset, so it remains `null`.
+10. Creates the `submission_created` activity through a small `RecordSubmissionActivity` action.
+11. Commits both records together. Redirecting to the new detail page is the LP1-B caller's responsibility.
 
 If activity creation fails, submission creation must roll back. This prevents a real submission from existing without its first required audit event.
 
-The activity feed is append-only at the application boundary: LP1 provides no edit or delete route, component action, or ordinary maintenance UI for activity records. The actor may later be deleted, so `user_id` is nullable while the description and timestamps remain.
+A validation failure raises Laravel's standard validation exception before any database write. Livewire converts that exception into field errors, so the LP1-B form still displays messages normally.
+
+The activity feed is append-only at the application boundary: LP1 provides no edit or delete route, component action, or ordinary maintenance UI for activity records. The database reinforces this by restricting deletion of any submission that has activity rows (S6). The actor may later be deleted, so `user_id` is nullable while the description and timestamps remain.
 
 ## S10. Status and locking rules
 
@@ -218,7 +252,7 @@ Use the existing Livewire 4 single-file convention under `resources/views/livewi
 Responsibilities:
 
 - **Submissions index:** role-aware heading and query. Requesting Staff see **My Submissions**; Legal and Admin see **Submission Queue**.
-- **Submission form:** requester-only creation, validation, trusted ownership/status assignment, atomic activity creation.
+- **Submission form:** requester-only form that calls the trusted `CreateSubmission` action (S9), which performs validation, ownership and status assignment, and atomic activity creation.
 - **Submission show:** authorized read-only details, status, requester identity for Legal/Admin, and initial activity history.
 
 Keeping the components as single-file components is consistent with every current full-page Livewire component and avoids an unapproved mixed architecture.
@@ -243,12 +277,12 @@ The Requesting Staff dashboard should replace its placeholder portal message wit
 
 ## S13. Validation and safe input handling
 
-Recommended server-side rules:
+These server-side rules are enforced inside the trusted creation boundary (S9), not only in a form:
 
 - `title`: required string, maximum 255;
 - `campus_id`: required integer, exists in active campuses, and cannot reference code `TBD`;
 - `partner_name`: required string, maximum 255;
-- `agreement_type`: nullable and limited to the seven current known types;
+- `agreement_type`: nullable and limited to the six types accepted by the current Agreement form: LOI, NDA, MOA, MOU, SEA, and ADDENDUM (`MOC` is rejected);
 - `purpose`: required string, maximum 5,000.
 
 Render all submitted text through Blade's escaped output. Do not use raw HTML rendering for requester-controlled fields.
@@ -273,25 +307,33 @@ Numeric IDs are acceptable because authorization—not obscurity—is the securi
 
 Add focused automated coverage before any local database migration is approved.
 
+Refetch rule (amended 14 Sep 2026; see S20): authorization and persistence assertions must use records reloaded from the database — for example `Submission::query()->findOrFail($id)`, `$model->fresh()`, or `assertDatabaseHas()` — not only the in-memory instance returned by a factory or action. LP1-B route-model binding will pass database-loaded models to the policy, so tests must exercise that same path.
+
 ### Model and migration tests
 
 - required relationships resolve;
 - `status` defaults to `pending`;
 - `agreement_id` accepts null and has no V1 relationship/API usage;
+- `created_by`, `campus_id`, and a non-null `agreement_id` are integers after refetch; an unset `agreement_id` refetches as `null`;
 - status and timestamps cast correctly;
 - factory data is fictional;
-- foreign-key delete behaviour matches the migration contract.
+- foreign-key delete behaviour matches the migration contract, including that a submission with activity history cannot be hard-deleted and its activities remain;
+- every foreign-key column is covered by an explicit index or by the leading column of a composite index, verified through the schema builder on SQLite.
 
 ### Creation and validation tests
 
 - Requesting Staff can create a valid submission;
-- owner, status, and `submitted_at` are server assigned;
-- creation writes exactly one `submission_created` activity with the actor;
+- the owner is derived from the authenticated session, and creation is denied when no user is authenticated;
+- owner, status, and `submitted_at` are server assigned and verified after refetch;
+- creation writes exactly one `submission_created` activity with the actor, verified after refetch;
 - submission and activity are atomic;
 - Legal, Admin, Viewer, and guests cannot create;
-- invalid/inactive/`TBD` campus IDs are rejected;
-- unknown agreement types and overlong fields are rejected;
-- injected `created_by`, `status`, and `agreement_id` values are ignored or rejected.
+- inactive Admin, Legal, and Requesting Staff cannot create;
+- invalid, inactive, and `TBD` campus IDs are rejected at the creation boundary;
+- `MOC` and unknown agreement types are rejected at the creation boundary, and `null` is accepted;
+- missing required fields and overlong `title`, `partner_name`, and `purpose` values are rejected at the creation boundary;
+- a rejected request writes neither a submission nor an activity;
+- injected `created_by`, `status`, `submitted_at`, and `agreement_id` values are ignored.
 
 ### Negative authorization tests
 
@@ -300,6 +342,8 @@ Add focused automated coverage before any local database migration is approved.
 - direct access to another requester's ID returns `404`;
 - the same denial holds during a Livewire update request;
 - Legal and Admin can see all submissions;
+- inactive Admin, Legal, and Requesting Staff are denied `viewAny`, `view`, and `create`, including for a Requesting Staff user's own submission;
+- policy decisions are asserted against database-refetched submissions and users;
 - Viewer receives `403` for every portal route;
 - guest requests redirect to login;
 - no role can update or delete a submission in LP1;
@@ -323,11 +367,13 @@ Expected new files:
 - `database/migrations/..._create_submission_activities_table.php`
 - `app/Models/Submission.php`
 - `app/Models/SubmissionActivity.php`
+- `app/Actions/CreateSubmission.php`
 - `app/Actions/RecordSubmissionActivity.php`
 - `app/Policies/SubmissionPolicy.php`
 - `database/factories/SubmissionFactory.php`
 - the three Livewire files listed in S11;
-- focused feature tests under `tests/Feature/Submission/`; and
+- focused feature tests under `tests/Feature/Submission/`;
+- `docs/handoff-lp1a.md` as the LP1-A implementation handoff; and
 - `docs/handoff-lp1.md` after implementation and verification.
 
 Expected modified files:
@@ -339,13 +385,13 @@ Expected modified files:
 - `docs/qa/test-cases.md`; and
 - `docs/qa/traceability-matrix.md`.
 
-Update `docs/qa/defect-log.md` only when LP1 work finds a genuine defect or security gap. Do not manufacture defect entries merely to make the document longer.
+Update `docs/qa/defect-log.md` only when LP1 work finds a genuine defect or security gap. Do not manufacture defect entries merely to make the document longer. The LP1-A security review found one pre-existing gap outside LP1 scope, recorded as DEF-013.
 
 ## S17. Implementation milestones
 
 Recommended safe order:
 
-1. Begin from the approved decisions recorded in S3 and S19.
+1. Begin from the approved decisions recorded in S3, S19, and S20.
 2. Write schema, models, relationships, factory, and their tests.
 3. Write the policy and negative authorization tests before building pages.
 4. Build the requester creation transaction and creation-audit test.
@@ -357,6 +403,8 @@ Recommended safe order:
 10. Only after approval, Amir manually migrates and performs the browser walkthrough.
 11. Record actual verification evidence in `docs/handoff-lp1.md`.
 12. Amir manually commits, pushes, and deploys when satisfied.
+
+Steps 2 to 4 form LP1-A and are specified for the Senior Developer in `docs/handoff-lp1a.md`. Steps 5 to 7 form LP1-B.
 
 This order establishes the security boundary before exposing the records through UI routes.
 
@@ -387,8 +435,9 @@ This order establishes the security boundary before exposing the records through
 - email or in-app notifications;
 - finalised agreement upload;
 - search, advanced filters, exports, dashboards, or reporting;
-- deletion, archiving, reopening, or Completed-to-In-Review transition; and
-- V2 Agreement Register linking UI, relationship, button, or workflow.
+- deletion, archiving, reopening, or Completed-to-In-Review transition;
+- V2 Agreement Register linking UI, relationship, button, or workflow; and
+- the DEF-013 fix for sessions that survive account deactivation.
 
 ### Main risks and trade-offs
 
@@ -398,6 +447,8 @@ This order establishes the security boundary before exposing the records through
 - **Admin queue access:** supports troubleshooting and continuity but broadens confidential-data access. Admin accounts must remain limited to trusted personnel.
 - **Dormant `agreement_id`:** prevents a later migration but creates a column with no V1 behavior. Comments and tests must clearly preserve that boundary.
 - **Separate activity table:** adds two LP1 files and one transaction, but ensures the audit trail starts with the first real event and scales into later milestones.
+- **Restricted submission deletion:** protects audit history, but a mistaken submission can no longer be removed with an ordinary delete. Any future deletion or archiving feature needs its own approved design.
+- **Session-derived creation owner:** prevents a caller from creating a submission on another user's behalf, but the action cannot be reused for unattended jobs or seeders without an explicit, separately approved design.
 
 ## S19. Resolved questions and LP1 acceptance criteria
 
@@ -413,7 +464,7 @@ All LP1 planning questions are resolved. Implementation must follow these decisi
 
 ### Recommended first implementation milestone
 
-**LP1-A: Schema, models, audit creation, and authorization contract.** Do not build the visible pages until this foundation passes.
+**LP1-A: Schema, models, audit creation, and authorization contract.** Do not build the visible pages until this foundation passes. The Senior Developer handoff is `docs/handoff-lp1a.md`.
 
 Acceptance criteria:
 
@@ -425,3 +476,32 @@ Acceptance criteria:
 6. Cross-requester access returns `404` and exposes no submission content.
 7. No application code, migration, or test uses real staff or legal matter data.
 8. The complete implementation diff is shown to Amir before any migration command.
+9. `created_by`, `campus_id`, and `agreement_id` have explicit integer casts, proven by refetch tests.
+10. The creation boundary derives its owner from the authenticated session and accepts no caller-supplied `User`.
+11. The creation boundary validates every LP1 field, including rejection of `MOC`, unknown types, inactive and `TBD` campuses, and overlong text; rejected input writes nothing.
+12. Authorization and persistence assertions use database-refetched records.
+13. Inactive Admin, Legal, and Requesting Staff are denied every portal ability.
+14. `submission_activities.submission_id` restricts deletion, and a test proves a submission with activity history cannot be hard-deleted.
+15. Every foreign-key column is covered by an explicit index or the leading column of a composite index on SQLite, proven by a schema test.
+
+## S20. Amendment record
+
+### Amendment 1 — 14 Sep 2026 — LP1-A security review corrections
+
+**Status:** Approved by Amir on 14 Sep 2026. The amended sections supersede the originally approved wording.
+
+**Reason:** An independent security review of a trial LP1-A implementation, which was discarded before commit, found gaps in the originally approved plan. This amendment corrects the plan before the Senior Developer implements LP1-A. The stakeholder decisions in S3 and S19 are unchanged.
+
+| # | Correction | Sections |
+|---|---|---|
+| 1 | Removed `MOC` from portal agreement types. The original S5 and S13 wording allowed seven types, including `MOC`, but the current Agreement form deliberately rejects `MOC`. A submission type must always map to a type the Agreement Register accepts. | S5, S13 |
+| 2 | Changed `submission_activities.submission_id` from cascading ("owned child") to `restrictOnDelete()`, so hard deletion cannot erase audit history. `Submission` has no soft deletes, unlike `Agreement`. | S6, S9, S18 |
+| 3 | Required explicit integer casts for `created_by`, `campus_id`, and nullable `agreement_id`, so strict ownership comparison is independent of database fetch types. | S7 |
+| 4 | Required the creation boundary to derive the owner from the authenticated session instead of accepting a caller-supplied `User`. | S9, S18 |
+| 5 | Moved validation of every LP1 field into the trusted creation boundary, so no caller can bypass it. | S9, S11, S13 |
+| 6 | Required authorization and persistence assertions against database-refetched records. | S15 |
+| 7 | Required inactive Admin, Legal, and Requesting Staff policy tests, and stated that every ability denies inactive users. | S8, S15 |
+| 8 | Required explicit SQLite indexes for foreign-key columns not covered by the leading column of a composite index (`submissions.campus_id`, `submissions.agreement_id`, `submission_activities.user_id`). The original wording assumed engine-provided indexes, which SQLite does not create. | S6, S15 |
+| 9 | Recorded the pre-existing deactivated-session gap as DEF-013. It is documented only and is not fixed in LP1-A. | S2, S16, S18 |
+
+LP1-A acceptance criteria 9 to 15 in S19 were added by this amendment.

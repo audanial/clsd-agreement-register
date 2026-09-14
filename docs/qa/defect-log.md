@@ -465,3 +465,50 @@ Registered `EnsureUserHasRole` as Livewire persistent middleware and added `abor
 
 **Verification**
 `LivewireRoleEnforcementTest` covers Legal, viewer, and requester attempts to create, activate, or deactivate users. The full LP0 suite passed with 222 tests and 600 assertions. Production deployment and requester route-access checks passed on 14 Sep 2026.
+
+---
+
+## DEF-013 — A deactivated user may retain an already-authenticated session
+
+| | |
+|---|---|
+| **Reported by** | LP1-A security review |
+| **Date found** | 14 Sep 2026 |
+| **Component** | `app/Http/Controllers/Auth/AuthenticatedSessionController.php`, `app/Http/Middleware/EnsureUserHasRole.php`, authentication middleware, remember-me login |
+| **Severity** | Major |
+| **Priority** | High |
+| **Status** | Open — documented only; not fixed in LP1-A |
+
+**Description**
+Deactivating an account (`users.is_active = false`) prevents that user from logging in again, but it does not end access they already have. The `is_active` flag is checked only when credentials are submitted at login. A user who is signed in when an admin deactivates them may keep using the application, including the Agreement Register and, once LP1-B routes exist, the Legal Submission Portal.
+
+This matters for a Private & Confidential system because deactivation is the action Legal would take when a staff member leaves or loses authorisation.
+
+**Steps to reproduce**
+Derived from code inspection during the LP1-A security review; not yet reproduced manually.
+1. As a user with register access, log in with **Remember me** ticked.
+2. In a separate browser, log in as an admin and deactivate that user on `/users`.
+3. Return to the first browser and open `/agreements`.
+4. Close the first browser, reopen it after the 120-minute session lifetime, and open `/agreements` again.
+
+**Expected**
+After deactivation, the user's next request is rejected, their session ends, and a remember-me cookie cannot sign them back in.
+
+**Actual (by inspection)**
+Step 3 continues to load the register until the session expires. Because the remember-me cookie re-authenticates without checking `is_active`, step 4 is also expected to load the register.
+
+**Root cause**
+- `AuthenticatedSessionController::store()` adds `is_active = true` to the login credentials (line 27). This is the only `is_active` check in the HTTP layer.
+- Laravel's `auth` middleware, and `EnsureUserHasRole::handle()` (lines 16–20), check only that a user exists and has an allowed role.
+- `SessionGuard::userFromRecaller()` restores a user from the remember-me cookie using the stored user ID and token alone, so the login-time `is_active` check is bypassed.
+- Deactivation in `user-manager` changes `is_active` but does not invalidate the user's database sessions or rotate their `remember_token`.
+
+**Fix / disposition**
+Deferred. Explicitly excluded from LP1-A (`docs/architecture-plan-lp1.md` S18 and S20; `docs/handoff-lp1a.md` S4), which is limited to submission schema, models, creation, and authorization.
+
+Partial mitigation planned in LP1-A: `SubmissionPolicy` denies every portal ability to inactive users, so submission records will not be exposed through the policy. This does not protect the Agreement Register or any non-policy route, so it is not a fix.
+
+A recommended fix, for a separately approved milestone: an authenticated middleware check that logs out and rejects inactive users on every request, including Livewire update requests; and, on deactivation, deleting that user's database sessions and rotating their `remember_token`. Add tests for both an existing session and a remember-me cookie.
+
+**Verification**
+None yet. The defect remains open until a fix is approved, implemented, and verified with automated tests and a browser check covering both an active session and a remember-me cookie.
