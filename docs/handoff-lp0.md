@@ -46,6 +46,8 @@ A temporary requester account was created, used only for this test, then deactiv
 - Browser walkthrough passed for admin, Legal, viewer, and requester paths.
 - `composer test`: 222 tests passed, 600 assertions.
 
-## Follow-up item
+## Follow-up completed — Requesting Staff wording
 
-The internal role value remains `requester`. The agreed user-facing label is **Requesting Staff**. The wording-only code change is intentionally separate from LP0's deployed commit and must be tested, committed, and deployed as its own small follow-up.
+The internal role value remains `requester`. The agreed user-facing label is **Requesting Staff**.
+
+The wording-only follow-up was tested locally (`composer test`: 224 tests passed), then deployed to production in commit `988e91c` on 14 Sep 2026. Production verification confirmed that the role selector and the temporary inactive test account both display **Requesting Staff**.
