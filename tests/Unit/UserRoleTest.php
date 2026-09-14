@@ -49,6 +49,13 @@ class UserRoleTest extends TestCase
         $this->assertSame('legal', $user->role);
     }
 
+    public function test_requester_has_a_clearer_interface_label(): void
+    {
+        $requester = User::factory()->requester()->make();
+
+        $this->assertSame('Requesting Staff', $requester->roleLabel());
+    }
+
     public function test_is_active_is_mass_assignable_and_cast_to_boolean(): void
     {
         $user = User::create([

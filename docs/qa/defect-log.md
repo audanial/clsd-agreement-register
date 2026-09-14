@@ -440,3 +440,28 @@ Two regression tests, one per entry point, asserting `from !== to` and the exact
 
 **Why the existing tests missed it**
 `test_meta_records_the_field_and_the_from_and_to_values` asserted that `meta` contained the keys and that `to` was correct, but never asserted that `from` differed from `to`. An assertion on presence is not an assertion on correctness — the lesson that produced the regression tests above.
+
+---
+
+## DEF-012 — User-management actions relied on presentation-level protection
+
+| | |
+|---|---|
+| **Reported by** | LP0 security audit |
+| **Date found** | 10 Sep 2026 |
+| **Component** | `resources/views/livewire/user-manager.blade.php` |
+| **Severity** | Critical |
+| **Priority** | High |
+| **Status** | Closed |
+
+**Description**
+The user-management page was protected by the `role:admin` route middleware and the Blade view hid its controls from non-admins. Its `create()` and `toggle()` actions, however, did not independently authorise the acting user. This was not an acceptable protection model for a Private & Confidential system because hiding controls is not a server-side security control.
+
+**Root cause**
+Livewire update requests do not automatically replay every route middleware. The application-specific role middleware was not registered as persistent middleware, and mutating component actions relied on the initial page request and Blade `@if` checks.
+
+**Fix** (commit `df6dbb1`)
+Registered `EnsureUserHasRole` as Livewire persistent middleware and added `abort_unless(auth()->user()?->canManageUsers(), 403)` to both user-management mutations.
+
+**Verification**
+`LivewireRoleEnforcementTest` covers Legal, viewer, and requester attempts to create, activate, or deactivate users. The full LP0 suite passed with 222 tests and 600 assertions. Production deployment and requester route-access checks passed on 14 Sep 2026.

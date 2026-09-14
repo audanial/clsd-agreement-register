@@ -58,6 +58,23 @@ class User extends Authenticatable
     }
 
     /**
+     * Human-readable role name for the interface.
+     *
+     * `requester` remains the internal role value used by authorization, while
+     * Legal staff see the clearer label "Requesting Staff".
+     */
+    public function roleLabel(): string
+    {
+        return match ($this->role) {
+            'admin' => 'Admin',
+            'legal' => 'Legal',
+            'viewer' => 'Viewer',
+            'requester' => 'Requesting Staff',
+            default => ucfirst($this->role),
+        };
+    }
+
+    /**
      * Anyone inside Legal — the people who vet agreements and review submissions.
      */
     public function isLegalStaff(): bool

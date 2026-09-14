@@ -106,6 +106,17 @@ class RequesterRoleTest extends TestCase
         ]);
     }
 
+    public function test_requester_is_shown_as_requesting_staff_in_the_users_page(): void
+    {
+        $admin = User::factory()->admin()->create();
+        User::factory()->requester()->create();
+
+        $this->actingAs($admin);
+
+        Livewire::test('user-manager')
+            ->assertSee('Requesting Staff');
+    }
+
     public function test_the_register_nav_link_is_hidden_from_a_requester(): void
     {
         $this->actingAs(User::factory()->requester()->create());

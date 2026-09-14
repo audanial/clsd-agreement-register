@@ -90,7 +90,7 @@ new class extends Component
                         <option value="admin">Admin</option>
                         <option value="legal">Legal</option>
                         <option value="viewer">Viewer</option>
-                        <option value="requester">Requester</option>
+                        <option value="requester">Requesting Staff</option>
                     </select>
                     @error('role') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
@@ -127,7 +127,7 @@ new class extends Component
                         <tr>
                             <td class="px-4 py-3 text-sm">{{ $user->name }}</td>
                             <td class="px-4 py-3 text-sm">{{ $user->email }}</td>
-                            <td class="px-4 py-3 text-sm">{{ $user->role }}</td>
+                            <td class="px-4 py-3 text-sm">{{ $user->roleLabel() }}</td>
                             <td class="px-4 py-3 text-sm">{{ $user->is_active ? 'Active' : 'Inactive' }}</td>
                             <td class="px-4 py-3 text-right text-sm">
                                 @if ($user->id === auth()->id())

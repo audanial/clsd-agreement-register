@@ -2037,3 +2037,89 @@ All visible labels that previously read "Campus" now read "Campus / Department".
 `CampusSeederTest::test_new_campuses_appear_in_the_agreement_forms_campus_dropdown`
 
 **Status** Pass (7 Sep 2026)
+
+---
+
+## 22. LP0 — Legal Submission Portal Foundation & Hardening
+
+### TC-078 — Requesters cannot access the Agreement Register
+
+| | |
+|---|---|
+| **Feature area** | Access control |
+| **Business rule** | BR-40 — A requester has no Agreement Register access, even through a direct URL |
+| **Priority** | Critical |
+| **Type** | Automated and manual production verification |
+| **Preconditions** | An active requester account exists |
+
+**Steps**
+1. Sign in as a requester.
+2. Confirm Register navigation is not shown.
+3. Request `/agreements`, `/agreements/{agreement}`, `/agreements/create`, and `/agreements/{agreement}/edit` directly.
+
+**Expected result**
+Register navigation is absent and each direct Register route returns `403 Forbidden`.
+
+**Automated by**
+`RequesterRoleTest::test_requester_is_forbidden_from_the_agreements_index`
+`RequesterRoleTest::test_requester_is_forbidden_from_an_agreement_show_page`
+`RequesterRoleTest::test_requester_is_forbidden_from_agreement_create_and_edit`
+`RequesterRoleTest::test_the_register_nav_link_is_hidden_from_a_requester`
+
+**Production verification**
+Passed 14 Sep 2026 using a temporary requester account. `/agreements`, `/agreements/1`, and `/users` each returned `403 Forbidden`.
+
+**Status** Pass (14 Sep 2026)
+
+---
+
+### TC-079 — User management actions are authorised server-side
+
+| | |
+|---|---|
+| **Feature area** | Access control |
+| **Business rule** | BR-41 — Only an admin can create, activate, or deactivate users |
+| **Priority** | Critical |
+| **Type** | Automated |
+| **Preconditions** | Admin, Legal, viewer, and requester test users |
+
+**Steps**
+1. Attempt to create a user through the Livewire user-management component as each non-admin role.
+2. Attempt to activate or deactivate another user as each non-admin role.
+3. Repeat the actions as an admin.
+
+**Expected result**
+Non-admin actions have no effect. Admin actions complete successfully. Route middleware and each mutating component action enforce the rule.
+
+**Automated by**
+`LivewireRoleEnforcementTest`
+`UserManagementTest`
+
+**Status** Pass (10 Sep 2026)
+
+---
+
+### TC-080 — A deactivated requester cannot log in
+
+| | |
+|---|---|
+| **Feature area** | Authentication & Session |
+| **Business rule** | BR-42 — Deactivation blocks access for every role, including requester |
+| **Priority** | High |
+| **Type** | Automated and manual production verification |
+| **Preconditions** | A requester account exists and can log in |
+
+**Steps**
+1. Deactivate the requester account as an admin.
+2. Attempt to log in using that account.
+
+**Expected result**
+Login is rejected with the generic authentication failure response.
+
+**Automated by**
+`UserManagementTest::test_deactivated_user_cannot_log_in`
+
+**Production verification**
+Passed 14 Sep 2026 using the temporary requester account from TC-078.
+
+**Status** Pass (14 Sep 2026)

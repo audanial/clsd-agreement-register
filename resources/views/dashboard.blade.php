@@ -9,7 +9,7 @@
 
             <p class="mt-4">
                 Signed in as <strong>{{ auth()->user()->name }}</strong>
-                <span class="rounded bg-gray-200 px-2 py-1 text-sm">{{ auth()->user()->role }}</span>
+                <span class="rounded bg-gray-200 px-2 py-1 text-sm">{{ auth()->user()->roleLabel() }}</span>
             </p>
 
             @unless (auth()->user()->canAccessRegister())
