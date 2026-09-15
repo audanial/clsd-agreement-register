@@ -69,6 +69,14 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
 
 ## Design philosophy (guides all future decisions, not just M1-M5)
 
+- **Standing visual reference:** `docs/design/reference/CLSD Legal Management System.html` is the
+  Claude-generated visual and UX reference for the upgraded management system. Use its
+  institutional palette, information hierarchy, cards, tables, status treatments,
+  confidentiality cues, and role-aware navigation as the direction for new UI work. It is not a
+  feature specification: approved architecture plans, milestone handoffs, and security/domain
+  rules take precedence, and future features depicted in the prototype must not be pulled into an
+  earlier milestone. Never serve the prototype or import its bundled scripts/assets into the app.
+
 - Optimize for convenience and usability by non-technical Legal staff over
   visual polish or impressive features. The system must remain operable
   by Legal (specifically Intan, the trusted successor as of 26 Aug 2026)
