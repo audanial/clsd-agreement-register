@@ -12,14 +12,14 @@
 | | |
 |---|---|
 | **Feature area** | Authentication & Session |
-| **Business rule** | BR-01 — Users have exactly one of three roles: `admin`, `legal`, or `viewer` |
+| **Business rule** | BR-01 — Users have exactly one of four roles: `admin`, `legal`, `viewer`, or `requester` |
 | **Priority** | High |
 | **Type** | Automated |
 | **Preconditions** | None; tests use the `User` factory |
 
 **Steps**
-1. Create users with `role = admin`, `role = legal`, and `role = viewer`.
-2. Call `isAdmin()`, `isLegal()`, and `isViewer()` on each.
+1. Create users with `role = admin`, `role = legal`, `role = viewer`, and `role = requester`.
+2. Call the role helpers (`isAdmin()`, `isLegal()`, `isViewer()`, `isRequester()`) on each.
 3. Attempt to mass-assign `role` and `is_active` during creation.
 
 **Expected result**
@@ -30,6 +30,7 @@
 `UserRoleTest::test_role_helpers_reflect_the_role_column`  
 `UserRoleTest::test_role_is_mass_assignable`  
 `UserRoleTest::test_is_active_is_mass_assignable_and_cast_to_boolean`
+`RequesterRoleTest::test_requester_role_persists_and_helpers_report_correctly`
 
 **Status** Pass (24 Aug 2026)
 
@@ -2042,34 +2043,36 @@ All visible labels that previously read "Campus" now read "Campus / Department".
 
 ## 22. LP0 — Legal Submission Portal Foundation & Hardening
 
-### TC-078 — Requesters cannot access the Agreement Register
+### TC-078 — Requesters use the Agreement Register as a read-only reference
 
 | | |
 |---|---|
 | **Feature area** | Access control |
-| **Business rule** | BR-40 — A requester has no Agreement Register access, even through a direct URL |
+| **Business rule** | BR-40 — A requester uses the Agreement Register as a read-only reference (LP1 Amendment 2, 17 Sep 2026): the register list and non-pending detail routes are reachable; create/edit routes and every mutation remain denied; navigation shows Register alongside My Submissions |
 | **Priority** | Critical |
-| **Type** | Automated and manual production verification |
-| **Preconditions** | An active requester account exists |
+| **Type** | Automated |
+| **Preconditions** | An active requester account; one signed agreement |
 
 **Steps**
 1. Sign in as a requester.
-2. Confirm Register navigation is not shown.
-3. Request `/agreements`, `/agreements/{agreement}`, `/agreements/create`, and `/agreements/{agreement}/edit` directly.
+2. Confirm Register navigation is shown alongside My Submissions.
+3. Request `/agreements` and `/agreements/{signed agreement}` directly.
+4. Request `/agreements/create` and `/agreements/{agreement}/edit` directly.
 
 **Expected result**
-Register navigation is absent and each direct Register route returns `403 Forbidden`.
+Register navigation is present, the register list and non-pending detail return `200 OK`, and each create/edit route returns `403 Forbidden`.
 
 **Automated by**
-`RequesterRoleTest::test_requester_is_forbidden_from_the_agreements_index`
-`RequesterRoleTest::test_requester_is_forbidden_from_an_agreement_show_page`
+`RequesterRoleTest::test_requester_can_open_the_agreements_index`
+`RequesterRoleTest::test_requester_can_open_a_non_pending_agreement_show_page`
 `RequesterRoleTest::test_requester_is_forbidden_from_agreement_create_and_edit`
-`RequesterRoleTest::test_the_register_nav_link_is_hidden_from_a_requester`
+`RequesterRoleTest::test_the_register_nav_link_is_shown_to_a_requester`
+`AgreementAccessControlTest::test_requester_can_reach_the_register_list_and_a_non_pending_detail`
 
-**Production verification**
-Passed 14 Sep 2026 using a temporary requester account. `/agreements`, `/agreements/1`, and `/users` each returned `403 Forbidden`.
+**Historical note**
+The pre-amendment rule (requesters fully blocked from the register) passed production verification on 14 Sep 2026 using a temporary requester account; `/agreements`, `/agreements/1`, and `/users` each returned `403 Forbidden`. That rule was superseded by LP1 Amendment 2 on 17 Sep 2026. Pending-agreement confidentiality for requesters is proven separately in TC-089.
 
-**Status** Pass (14 Sep 2026)
+**Status** Pass (17 Sep 2026)
 
 ---
 
@@ -2123,3 +2126,312 @@ Login is rejected with the generic authentication failure response.
 Passed 14 Sep 2026 using the temporary requester account from TC-078.
 
 **Status** Pass (14 Sep 2026)
+
+---
+
+## 23. LP1 — Legal Submission Portal
+
+> LP1-B (15 Sep 2026) exposed the LP1-A submission foundation through three Livewire pages (`resources/views/livewire/submissions/`), three named routes, role-aware navigation, and requester dashboard entry points. The CLSD prototype (see `docs/design/README.md`) supplied the visual language only; no depicted future feature was implemented.
+
+### TC-081 — Portal route access control
+
+| | |
+|---|---|
+| **Feature area** | Access control |
+| **Business rule** | BR-43 / BR-46 / BR-45 — Only Requesting Staff create; viewers have no portal access; Legal/Admin read but cannot create |
+| **Priority** | Critical |
+| **Type** | Automated |
+| **Preconditions** | Test users for every role; one factory-created submission |
+
+**Steps**
+1. Request `/submissions`, `/submissions/create`, and `/submissions/{submission}` as a guest.
+2. Repeat as an active viewer.
+3. Repeat as active Legal and active Admin.
+4. Repeat as active Requesting Staff, using their own submission for the detail route.
+5. Probe for update/delete routes: check the route collection and issue `PUT`, `DELETE`, and `POST` verbs against the portal paths.
+
+**Expected result**
+Guests are redirected to `/login`. Viewers receive `403` on every portal route. Legal and Admin receive `200` for index and show but `403` for create. Requesting Staff receive `200` for index, create, and their own detail. No update or delete route exists; non-GET verbs return `405 Method Not Allowed`.
+
+**Automated by**
+`PortalAccessTest::test_guests_are_redirected_to_login_for_every_portal_route`
+`PortalAccessTest::test_viewer_receives_403_for_every_portal_route`
+`PortalAccessTest::test_legal_and_admin_can_access_index_and_show_but_not_create`
+`PortalAccessTest::test_requesting_staff_can_access_index_create_and_their_own_detail`
+`PortalAccessTest::test_inactive_admin_and_legal_are_denied_the_index`
+`PortalAccessTest::test_inactive_admin_and_legal_are_denied_the_show_route`
+`PortalAccessTest::test_no_update_or_delete_routes_exist`
+
+**Status** Pass (15 Sep 2026)
+
+---
+
+### TC-082 — Requester queue isolation and the shared Legal/Admin queue
+
+| | |
+|---|---|
+| **Feature area** | Privacy & list behaviour |
+| **Business rule** | BR-44 / BR-45 — Requesters see only their own submissions; Legal/Admin see one shared queue with requester identity |
+| **Priority** | Critical |
+| **Type** | Automated |
+| **Preconditions** | Two requester accounts with separate submissions |
+
+**Steps**
+1. As Requesting Staff, render the queue with own and foreign submissions present.
+2. Create 17 own and 3 foreign submissions and inspect the paginator total and page contents.
+3. Give a foreign submission a `submission_created` activity with a distinctive description and a distinctive actor name, then render the queue as an unrelated requester.
+4. Render the queue as active Legal and as active Admin.
+5. Render the queue with no submissions for each side.
+
+**Expected result**
+The requester sees only their own rows; a foreign submission's title, requester identity, activity description, and actor name never appear, and no "Requested by" column renders. The paginator total is computed from the ownership-scoped query (17, not 20), and page 1 never contains a foreign row. Legal and Admin see every submission, the "Submission Queue" heading, and the requester name. Both sides get an appropriate empty state; only Requesting Staff see the "New Submission" action.
+
+**Automated by**
+`SubmissionsIndexTest::test_requester_list_contains_only_their_own_records`
+`SubmissionsIndexTest::test_requester_pagination_counts_exclude_other_requesters_records`
+`SubmissionsIndexTest::test_requester_output_excludes_another_requesters_title_identity_and_activity`
+`SubmissionsIndexTest::test_legal_and_admin_see_all_submissions`
+`SubmissionsIndexTest::test_legal_and_admin_queue_identifies_the_requester`
+`SubmissionsIndexTest::test_null_agreement_type_renders_as_not_sure`
+`SubmissionsIndexTest::test_requester_sees_the_create_action_and_legal_does_not`
+`SubmissionsIndexTest::test_index_renders_an_appropriate_empty_state`
+`SubmissionsIndexTest::test_legal_queue_renders_an_appropriate_empty_state`
+
+**Status** Pass (15 Sep 2026)
+
+---
+
+### TC-083 — Submission form integrity and trusted creation
+
+| | |
+|---|---|
+| **Feature area** | Creation |
+| **Business rule** | BR-48 / BR-49 / BR-50 — Active non-TBD campuses; six approved types plus "Not sure"; no protected controls; creation via the trusted boundary |
+| **Priority** | Critical |
+| **Type** | Automated |
+| **Preconditions** | An active Requesting Staff user; active, inactive, and `TBD` campuses |
+
+**Steps**
+1. Open the form and inspect the campus dropdown.
+2. Extract the option values of the `agreement_type` select and compare them with the exact expected ordered list.
+3. Submit a valid form through Livewire.
+4. Submit with "Not sure" selected.
+5. Inspect the rendered HTML for ownership, status, timestamp, and agreement-link controls and for draft affordances.
+6. Confirm the Private & Confidential notice renders.
+
+**Expected result**
+The campus dropdown contains only active campuses and excludes `TBD`. The `agreement_type` select offers exactly — in order — the blank "Not sure" option, then LOI, NDA, MOA, MOU, SEA, and ADDENDUM; a missing, duplicate, reordered, or seventh option (such as `MOC`) fails the test. A valid submission creates exactly one submission and one `submission_created` activity and redirects to the detail page; "Not sure" persists `agreement_type` as `null`. No protected control or draft action exists on the form.
+
+**Automated by**
+`SubmissionFormTest::test_form_lists_only_active_non_tbd_campuses`
+`SubmissionFormTest::test_agreement_type_select_offers_exactly_the_seven_options_in_order`
+`SubmissionFormTest::test_valid_livewire_submission_creates_one_submission_and_one_activity_and_redirects`
+`SubmissionFormTest::test_not_sure_persists_as_null`
+`SubmissionFormTest::test_form_exposes_no_protected_ownership_status_timestamp_or_agreement_controls`
+`SubmissionFormTest::test_form_shows_the_private_and_confidential_notice`
+
+**Status** Pass (15 Sep 2026)
+
+---
+
+### TC-084 — Form validation maps to field errors and writes nothing
+
+| | |
+|---|---|
+| **Feature area** | Creation & validation |
+| **Business rule** | BR-48 / BR-49 / BR-50 — Rejected form input reports the correct field and writes neither table |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | An active Requesting Staff user; active and inactive campuses |
+
+**Steps**
+1. Submit the form with an empty title, an empty partner name, a 5,001-character purpose, `MOC`, and an inactive campus in turn.
+2. Submit with each of `title`, `partner_name`, and `purpose` blank in turn, expecting that field's own error.
+
+**Expected result**
+Each rejection maps to errors on exactly its expected field — empty title → `title`, empty partner name → `partner_name`, overlong purpose → `purpose`, `MOC` → `agreement_type`, inactive campus → `campus_id` — and both the `submissions` and `submission_activities` tables remain empty.
+
+**Automated by**
+`SubmissionFormTest::test_invalid_form_data_reports_the_field_and_writes_neither_table`
+`SubmissionFormTest::test_missing_required_fields_report_their_own_field`
+
+**Status** Pass (15 Sep 2026)
+
+---
+
+### TC-085 — Livewire re-authorization on update requests
+
+| | |
+|---|---|
+| **Feature area** | Access control |
+| **Business rule** | BR-47 / BR-51 — A deactivated, unauthorized, or different user cannot reuse an existing component snapshot |
+| **Priority** | Critical |
+| **Type** | Automated |
+| **Preconditions** | A legitimate owner snapshot and an unauthorized session |
+
+**Steps**
+1. As the owner, open the detail page; then switch to a different requester and trigger a Livewire update (`$refresh`), expecting `404 Not Found` (the policy's `denyAsNotFound`).
+2. As the owner, open the detail page; deactivate the account in the database; re-authenticate the stored inactive state; then trigger a Livewire update, expecting `403 Forbidden`.
+3. Repeat step 2 for inactive Admin and inactive Legal, expecting `403 Forbidden`.
+4. As Requesting Staff, fill the form snapshot; switch to a Legal user and trigger the save action, expecting `403 Forbidden` and nothing written.
+5. As Requesting Staff, replay the form snapshot under a Legal session and under a deactivated requester session, triggering a harmless update (`$refresh`) each time, expecting `403 Forbidden`.
+6. Replay the index component snapshot as a viewer whose own `created_by` data would otherwise be exposed, and as an inactive requester, an inactive Admin, and an inactive Legal user, each expecting `403 Forbidden`.
+
+**Expected result**
+Every replayed snapshot is denied with the exact expected status (404 for cross-requester detail access, 403 for every other denial), and nothing is written. Each negative is paired with an in-test positive control (the legitimate user rendering or refreshing first).
+
+**Automated by**
+`SubmissionShowTest::test_cross_requester_denial_holds_on_a_real_livewire_update_request`
+`SubmissionShowTest::test_an_inactive_requester_is_denied_on_the_livewire_update_path`
+`SubmissionShowTest::test_inactive_admin_and_legal_are_denied_on_the_livewire_update_path`
+`SubmissionShowTest::test_the_owner_can_still_refresh_their_own_component`
+`SubmissionFormTest::test_a_legal_session_cannot_submit_through_a_replayed_form_snapshot`
+`SubmissionFormTest::test_admin_legal_and_viewer_cannot_refresh_a_replayed_form_snapshot`
+`SubmissionFormTest::test_an_inactive_requester_cannot_refresh_the_form_component`
+`SubmissionsIndexTest::test_an_inactive_requester_is_denied_on_the_index_update_path`
+`SubmissionsIndexTest::test_inactive_admin_and_legal_are_denied_on_the_index_update_path`
+`SubmissionsIndexTest::test_a_viewer_cannot_render_the_list_through_a_livewire_update`
+
+**Status** Pass (15 Sep 2026)
+
+---
+
+### TC-086 — Authorized read-only detail page
+
+| | |
+|---|---|
+| **Feature area** | Privacy & display |
+| **Business rule** | BR-44 / BR-45 — Requesters open only their own detail; Legal/Admin see requester identity; no mutation exists |
+| **Priority** | Critical |
+| **Type** | Automated |
+| **Preconditions** | A submission with its initial `submission_created` activity |
+
+**Steps**
+1. As the owning Requesting Staff user, open the detail of a submission with deterministic data (title, partner, agreement type, purpose, campus) and a frozen server clock, then verify every displayed field.
+2. Open it as Legal and as Admin and verify the additional requester-identity block.
+3. Give a foreign submission a `submission_created` activity with a distinctive description and actor name, then open its detail URL as an unrelated requester.
+4. Inspect the page for mutation controls and for the dormant agreement link.
+
+**Expected result**
+The owner sees the submission number (`#<id>`), title, campus code and name, partner, agreement type, purpose, Pending status, the submitted timestamp rendered in Malaysian time by `<x-datetime>` (a frozen 10:00 UTC moment displays as "14 Sep 2026, 6:00 PM"), the initial `submission_created` activity description, and the activity's actor name. Requesting Staff do not see "Requested by". Legal and Admin additionally see "Requested by" with the requester name and the "Created" timestamp. Another requester receives `404` with none of the foreign title, purpose, activity description, or actor name exposed, while the owner's own view still shows the activity (positive control). No edit, delete, archive, status, upload, message, note, or agreement-link control or route exists.
+
+**Automated by**
+`SubmissionShowTest::test_requesting_staff_can_open_their_own_submission`
+`SubmissionShowTest::test_legal_and_admin_detail_identifies_the_requester`
+`SubmissionShowTest::test_detail_displays_the_initial_activity_history`
+`SubmissionShowTest::test_cross_requester_direct_access_returns_404_and_exposes_no_content`
+`SubmissionShowTest::test_detail_is_read_only_with_no_mutation_controls`
+`SubmissionShowTest::test_detail_does_not_expose_the_dormant_agreement_link`
+
+**Status** Pass (15 Sep 2026)
+
+---
+
+### TC-087 — Requester-controlled HTML is escaped
+
+| | |
+|---|---|
+| **Feature area** | Display security |
+| **Business rule** | BR-52 — Requester-controlled values render through escaped Blade output only |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | A submission whose title contains `<script>` and whose partner name contains an `onerror` payload |
+
+**Steps**
+1. Create such a submission and render the queue as its owner.
+2. Render the detail page as its owner.
+
+**Expected result**
+Neither page outputs raw `<script>` or `<img src=x>` markup; the escaped entity form appears instead.
+
+**Automated by**
+`SubmissionsIndexTest::test_requester_controlled_html_is_escaped_in_the_list`
+`SubmissionShowTest::test_requester_controlled_html_is_escaped_on_detail`
+
+**Status** Pass (15 Sep 2026)
+
+---
+
+### TC-088 — Portal navigation and dashboard entry points
+
+| | |
+|---|---|
+| **Feature area** | Navigation |
+| **Business rule** | BR-44 / BR-46 / BR-40 — Role-aware portal labels; viewers see no portal link; requesters keep My Submissions and, since LP1 Amendment 2, also see Register |
+| **Priority** | Medium |
+| **Type** | Automated |
+| **Preconditions** | One user per role |
+
+**Steps**
+1. Render the dashboard as each role and inspect the navigation.
+2. As Requesting Staff, confirm the dashboard shows Create Submission, My Submissions, and Open register entry points.
+3. Open `/submissions` as each role and check the heading.
+
+**Expected result**
+Requesting Staff see "My Submissions" and "Register" in navigation and the Create Submission, My Submissions, and Open register dashboard entry points, but not "Submission Queue". Admin and Legal see "Submission Queue" and keep Register. Viewers keep Register but get no portal link, and no non-requester dashboard shows the portal entry points. The index heading matches the role.
+
+**Automated by**
+`PortalNavigationTest::test_requester_navigation_says_my_submissions_and_hides_the_queue`
+`PortalNavigationTest::test_admin_and_legal_navigation_says_submission_queue_and_keeps_register`
+`PortalNavigationTest::test_viewer_navigation_shows_no_portal_link_but_keeps_register`
+`PortalNavigationTest::test_requester_dashboard_links_to_create_submission_my_submissions_and_the_register`
+`PortalNavigationTest::test_non_requester_dashboards_do_not_show_the_portal_entry_points`
+`PortalNavigationTest::test_portal_index_heading_matches_the_role`
+
+**Status** Pass (15 Sep 2026; re-verified 17 Sep 2026 after LP1 Amendment 2)
+
+---
+
+## 24. LP1 Amendment 2 — Requesting Staff Register access (17 Sep 2026)
+
+> Amendment 2 gives Requesting Staff read-only access to the Agreement Register while preserving pending-agreement confidentiality, the read-only boundary, and submission-portal isolation. See `docs/architecture-plan-lp1.md` S21.
+
+### TC-089 — Requesting Staff read-only Register access with full pending confidentiality
+
+| | |
+|---|---|
+| **Feature area** | Access control / Pending Visibility / Read-only boundary |
+| **Business rule** | BR-40 (amended) / BR-03 / BR-53 — Requesters may open the register list and non-pending detail records; pending agreements stay invisible to them through every channel; and no register mutation is reachable |
+| **Priority** | Critical |
+| **Type** | Automated and manual browser verification |
+| **Preconditions** | Active signed and pending agreements; an active requester account |
+
+**Steps**
+1. Sign in as a requester and render the register list with signed and pending agreements present.
+2. Create enough signed and pending rows to paginate and inspect the paginator total.
+3. Inspect the document-status filter options, the year dropdown options, and search/filter results.
+4. Request `/agreements/{pending agreement}` directly.
+5. Render a signed agreement detail page and inspect it for create, edit, archive, and status-changing controls.
+6. Invoke the archive and updateStatus actions through the detail component as a requester.
+7. Request `/agreements/create` and `/agreements/{agreement}/edit` directly.
+
+**Expected result**
+The list shows signed rows only; the pagination total excludes pending rows; the document-status filter offers no `pending` option and no pending row appears under any offered filter or search; the year dropdown omits a year represented only by pending agreements; direct access to a pending agreement returns `404`; the detail page shows no mutation controls; and both Livewire mutation attempts return `403` with the agreement unchanged in the database. Create/edit routes return `403`.
+
+**Automated by**
+`AgreementsIndexTest::test_requester_does_not_see_pending_agreements_in_the_list`
+`AgreementsIndexTest::test_requester_pagination_total_excludes_pending_rows`
+`AgreementsIndexTest::test_pending_is_not_offered_as_a_status_filter_to_a_requester`
+`AgreementsIndexTest::test_year_dropdown_options_respect_the_pending_visibility_scope_for_a_requester`
+`AgreementsIndexTest::test_search_results_exclude_pending_agreements_for_a_requester`
+`AgreementsIndexTest::test_document_status_filter_results_exclude_pending_agreements_for_a_requester`
+`AgreementsIndexTest::test_a_pending_document_status_filter_value_cannot_reveal_pending_agreements`
+`AgreementsIndexTest::test_a_pending_only_year_and_the_combined_filter_cannot_reveal_pending_agreements`
+`AgreementsIndexTest::test_requester_does_not_see_the_create_button`
+`AgreementShowTest::test_requester_can_view_a_signed_agreement`
+`AgreementShowTest::test_requester_gets_404_for_a_pending_agreement`
+`AgreementShowTest::test_requester_does_not_see_mutation_controls`
+`AgreementShowTest::test_requester_cannot_manually_archive_an_agreement`
+`AgreementShowTest::test_requester_cannot_change_status_through_a_livewire_update`
+`AgreementShowTest::test_a_stale_snapshot_cannot_render_an_agreement_after_it_becomes_pending`
+`AgreementAccessControlTest::test_requester_gets_403_on_the_create_route`
+`AgreementAccessControlTest::test_requester_gets_403_on_the_edit_route`
+`UserRoleTest::test_can_access_register_is_an_allow_list_of_all_four_roles`
+
+**Verification status**
+The two hostile URL-backed filter tests and the stale-snapshot Livewire update regression test (`AgreementShowTest::test_a_stale_snapshot_cannot_render_an_agreement_after_it_becomes_pending`, DEF-014) passed as part of the authorised full-suite run on 18 Sep 2026: 343 tests, 1,138 assertions.
+
+**Manual verification**
+Passed 18 Sep 2026 against the local development database. Legal temporarily moved agreement `#2` from `awaiting_partner` to `pending`. Requesting Staff could still open the Register and agreement `#1`, but agreement `#2` disappeared from the list and returned `404` by direct URL; Pending was absent from the filter; no create or mutation controls were exposed; and create/edit URLs returned `403`. Viewer retained read-only Register access, received `404` for agreement `#2`, and remained denied the portal. Legal retained pending-record and shared-queue access. Guest Register and portal URLs redirected to login. Agreement `#2` was restored to `awaiting_partner` after the walkthrough.
+
+**Status** Pass (18 Sep 2026)

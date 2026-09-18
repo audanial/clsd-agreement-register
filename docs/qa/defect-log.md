@@ -512,3 +512,34 @@ A recommended fix, for a separately approved milestone: an authenticated middlew
 
 **Verification**
 None yet. The defect remains open until a fix is approved, implemented, and verified with automated tests and a browser check covering both an active session and a remember-me cookie.
+
+---
+
+## DEF-014 — A stale Livewire snapshot could render an agreement after Legal moved it to pending
+
+| | |
+|---|---|
+| **Reported by** | LP1 Amendment 2 remediation review |
+| **Date found** | 17 Sep 2026 |
+| **Component** | `resources/views/livewire/agreement-show.blade.php` — public `$agreement` model property hydration |
+| **Severity** | Major |
+| **Priority** | High |
+| **Status** | Closed — fixed and verified |
+
+**Description**
+A Requester or Viewer who legitimately opened a visible agreement could retain its checksum-signed Livewire snapshot. If Legal later changed that agreement to `document_status = pending`, a deliberately replayed Livewire update could restore and render the now-pending model without reapplying the pending global scope. Requester and Viewer are affected identically.
+
+The defect predates LP1 Amendment 2 and has existed since the Agreement detail component was introduced. Amendment 2 widened the group able to encounter it (by granting Requesters read-only register access) but did not introduce it.
+
+This is not an arbitrary-record access vulnerability: exploitation requires a legitimately obtained snapshot, a later visible-to-pending transition, and a replayed Livewire update. Arbitrary snapshots cannot be forged without the application key.
+
+**Root cause**
+- Livewire restores public Eloquent model properties through `newQueryForRestoration()`, which uses an unscoped query, so the pending global scope does not re-apply during `/livewire/update`.
+- Route model binding cannot compensate on the update path. The initial `GET /agreements/{agreement}` request resolves `{agreement}` through the normal scoped query, so a pending agreement already returns `404` there. A Livewire update, however, is sent to `/livewire/update`, which has no `{agreement}` route parameter for `SubstituteBindings` to resolve; the model comes only from the snapshot restoration described above.
+
+**Fix**
+- `agreement-show` re-resolves its hydrated Agreement under the current user's normal scoped query in `boot()` and reassigns it to `$this->agreement`, so rendering and relationship access use the newly scoped model.
+- The component returns `404` when the model is no longer visible through the global scope. Admin and Legal retain access to pending agreements; only the now-hidden records are refused.
+
+**Verification**
+`AgreementShowTest::test_a_stale_snapshot_cannot_render_an_agreement_after_it_becomes_pending` covers both affected roles (Requester and Viewer) over a real mounted component, a direct `DB::table` status change, and a `$refresh` update expecting `assertNotFound()`. It passed in the authorised full-suite run on 18 Sep 2026 (343 tests, 1,138 assertions). Pint also passed.

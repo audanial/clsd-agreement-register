@@ -34,6 +34,20 @@ class UserRoleTest extends TestCase
         $this->assertTrue(User::factory()->admin()->make()->canSeePending());
         $this->assertTrue(User::factory()->legal()->make()->canSeePending());
         $this->assertFalse(User::factory()->viewer()->make()->canSeePending());
+        $this->assertFalse(User::factory()->requester()->make()->canSeePending());
+    }
+
+    public function test_can_access_register_is_an_allow_list_of_all_four_roles(): void
+    {
+        $this->assertTrue(User::factory()->admin()->make()->canAccessRegister());
+        $this->assertTrue(User::factory()->legal()->make()->canAccessRegister());
+        $this->assertTrue(User::factory()->viewer()->make()->canAccessRegister());
+        $this->assertTrue(User::factory()->requester()->make()->canAccessRegister());
+
+        // Unknown future roles must stay denied by default.
+        $unknown = User::factory()->make(['role' => 'auditor']);
+
+        $this->assertFalse($unknown->canAccessRegister());
     }
 
     public function test_role_is_mass_assignable(): void

@@ -51,7 +51,8 @@ class User extends Authenticatable
 
     /**
      * Non-Legal UniKL staff who submit agreement requests through the Legal
-     * Submission Portal. Sees only their own submissions; never the register.
+     * Submission Portal. Sees only their own submissions and uses the
+     * Agreement Register as a read-only reference (LP1 Amendment 2).
      */
     public function isRequester(): bool
     {
@@ -91,12 +92,15 @@ class User extends Authenticatable
     /**
      * Access to the Agreement Register.
      *
-     * Deliberately an allow-list, not `! isRequester()`: a role added later is
+     * Deliberately an allow-list, not a deny-list: a role added later is
      * denied the register by default and has to be granted it on purpose.
+     * Requesters were added by LP1 Amendment 2 (17 Sep 2026) as read-only
+     * reference users, like viewers; pending agreements stay hidden from
+     * them via canSeePending() and the pending global scope.
      */
     public function canAccessRegister(): bool
     {
-        return in_array($this->role, ['admin', 'legal', 'viewer'], true);
+        return in_array($this->role, ['admin', 'legal', 'viewer', 'requester'], true);
     }
 
     /**

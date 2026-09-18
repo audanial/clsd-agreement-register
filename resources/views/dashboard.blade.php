@@ -12,11 +12,25 @@
                 <span class="rounded bg-gray-200 px-2 py-1 text-sm">{{ auth()->user()->roleLabel() }}</span>
             </p>
 
-            @unless (auth()->user()->canAccessRegister())
+            @if (auth()->user()->isRequester())
+                {{-- Requesting Staff entry points into the Legal Submission Portal.
+                     Explicit requester check, not @unless (canAccessRegister()):
+                     requesters also get Register access (LP1 Amendment 2), so a
+                     register-based condition would wrongly hide these buttons.
+                     Links only; authorization stays in the routes and policy. --}}
                 <p class="mt-4 text-sm text-gray-600">
                     Your account is set up for submitting agreement requests to Legal.
                 </p>
-            @endunless
+
+                <div class="mt-6 flex gap-3">
+                    <a href="{{ route('submissions.create') }}" class="rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">
+                        Create Submission
+                    </a>
+                    <a href="{{ route('submissions.index') }}" class="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-900">
+                        My Submissions
+                    </a>
+                </div>
+            @endif
 
             <div class="mt-6 flex gap-3">
                 @if (auth()->user()->canAccessRegister())

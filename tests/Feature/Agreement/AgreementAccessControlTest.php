@@ -27,6 +27,32 @@ class AgreementAccessControlTest extends TestCase
         $this->get(route('agreements.edit', $agreement))->assertStatus(403);
     }
 
+    public function test_requester_gets_403_on_the_create_route(): void
+    {
+        $this->actingAs(User::factory()->requester()->create());
+
+        $this->get(route('agreements.create'))->assertStatus(403);
+    }
+
+    public function test_requester_gets_403_on_the_edit_route(): void
+    {
+        $agreement = Agreement::factory()->signed()->create();
+
+        $this->actingAs(User::factory()->requester()->create());
+
+        $this->get(route('agreements.edit', $agreement))->assertStatus(403);
+    }
+
+    public function test_requester_can_reach_the_register_list_and_a_non_pending_detail(): void
+    {
+        $agreement = Agreement::factory()->signed()->create();
+
+        $this->actingAs(User::factory()->requester()->create());
+
+        $this->get(route('agreements.index'))->assertOk();
+        $this->get(route('agreements.show', $agreement))->assertOk();
+    }
+
     public function test_legal_can_reach_create_and_edit(): void
     {
         $agreement = Agreement::factory()->signed()->create();

@@ -16,6 +16,17 @@
             <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
                 <a href="{{ route('dashboard') }}" class="font-semibold">CLSD Agreement Register</a>
                 <div class="flex items-center gap-4 text-sm">
+                    @if (auth()->user()->canAccessPortal())
+                        {{-- Presentation only: route middleware and the SubmissionPolicy
+                             are the authorization boundary. Requesters get their own
+                             queue; admin and legal share the Legal queue; viewers get
+                             no portal link at all. --}}
+                        @if (auth()->user()->isRequester())
+                            <a href="{{ route('submissions.index') }}" class="hover:text-gray-300">My Submissions</a>
+                        @else
+                            <a href="{{ route('submissions.index') }}" class="hover:text-gray-300">Submission Queue</a>
+                        @endif
+                    @endif
                     @if (auth()->user()->canAccessRegister())
                         <a href="{{ route('agreements.index') }}" class="hover:text-gray-300">Register</a>
                     @endif

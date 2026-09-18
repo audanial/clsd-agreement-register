@@ -22,6 +22,25 @@ new class extends Component
         $this->project_status = $agreement->project_status;
     }
 
+    public function boot(): void
+    {
+        if (! isset($this->agreement)) {
+            return;
+        }
+
+        // Livewire restores models with newQueryForRestoration(), which uses
+        // newQueryWithoutScopes() — the pending global scope does not re-apply on
+        // /livewire/update. Re-resolve under the current user's scopes so a snapshot
+        // taken while the agreement was visible cannot render it after Legal moves
+        // it back to pending. boot() runs after hydration on updates, and before
+        // mount() on the initial load where route binding already enforces this.
+        $agreement = Agreement::find($this->agreement->getKey());
+
+        abort_if($agreement === null, 404);
+
+        $this->agreement = $agreement;
+    }
+
     public function confirmArchive(): void
     {
         if (! auth()->user()->canWrite()) {

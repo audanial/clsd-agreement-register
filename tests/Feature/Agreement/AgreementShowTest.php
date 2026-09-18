@@ -6,6 +6,7 @@ use App\Models\Agreement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -31,6 +32,104 @@ class AgreementShowTest extends TestCase
         $this->actingAs(User::factory()->viewer()->create());
 
         $this->get(route('agreements.show', $agreement))->assertStatus(404);
+    }
+
+    public function test_requester_gets_404_for_a_pending_agreement(): void
+    {
+        $agreement = Agreement::factory()->pending()->create();
+
+        $this->actingAs(User::factory()->requester()->create());
+
+        $this->get(route('agreements.show', $agreement))->assertStatus(404);
+    }
+
+    /**
+     * Livewire restores public Eloquent model properties through an unscoped
+     * restoration query (newQueryForRestoration()), so the pending global scope
+     * does not re-apply on /livewire/update. This test exercises that
+     * stale-snapshot path: an agreement visible when the component was mounted
+     * must stop rendering once it moves to document_status = pending. The direct
+     * DB update deliberately bypasses the Eloquent scope and application
+     * mutation code.
+     */
+    public function test_a_stale_snapshot_cannot_render_an_agreement_after_it_becomes_pending(): void
+    {
+        foreach (['requester', 'viewer'] as $role) {
+            $title = 'Stale Snapshot Probe '.ucfirst($role);
+            $agreement = Agreement::factory()->signed()->create(['title' => $title]);
+
+            $this->actingAs(User::factory()->{$role}()->create());
+
+            // Positive control: the agreement is visible while still signed.
+            $component = Livewire::test('agreement-show', ['agreement' => $agreement]);
+            $component->assertSee($title);
+
+            DB::table('agreements')
+                ->where('id', $agreement->getKey())
+                ->update(['document_status' => 'pending']);
+
+            $component->call('$refresh')->assertNotFound();
+        }
+    }
+
+    public function test_requester_can_view_a_signed_agreement(): void
+    {
+        $agreement = Agreement::factory()->signed()->create();
+
+        $this->actingAs(User::factory()->requester()->create());
+
+        $this->get(route('agreements.show', $agreement))
+            ->assertOk()
+            ->assertSee($agreement->title);
+    }
+
+    public function test_requester_does_not_see_mutation_controls(): void
+    {
+        $agreement = Agreement::factory()->signed()->create();
+
+        $this->actingAs(User::factory()->requester()->create());
+
+        $this->get(route('agreements.show', $agreement))
+            ->assertOk()
+            ->assertDontSee('Change status')
+            ->assertDontSee('Archive this agreement')
+            ->assertDontSee('Update status');
+    }
+
+    public function test_requester_cannot_manually_archive_an_agreement(): void
+    {
+        $agreement = Agreement::factory()->signed()->create();
+
+        $this->actingAs(User::factory()->requester()->create());
+
+        Livewire::test('agreement-show', ['agreement' => $agreement])
+            ->call('archive')
+            ->assertStatus(403);
+
+        $agreement->refresh();
+
+        $this->assertNull($agreement->archived_at);
+    }
+
+    public function test_requester_cannot_change_status_through_a_livewire_update(): void
+    {
+        $agreement = Agreement::factory()->signed()->create([
+            'document_status' => 'signed',
+            'project_status' => 'ongoing',
+        ]);
+
+        $this->actingAs(User::factory()->requester()->create());
+
+        Livewire::test('agreement-show', ['agreement' => $agreement])
+            ->set('document_status', 'pending')
+            ->set('project_status', 'completed')
+            ->call('updateStatus')
+            ->assertStatus(403);
+
+        $agreement->refresh();
+
+        $this->assertSame('signed', $agreement->document_status);
+        $this->assertSame('ongoing', $agreement->project_status);
     }
 
     public function test_viewer_can_view_a_signed_agreement(): void

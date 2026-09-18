@@ -3,6 +3,7 @@
 namespace Tests\Feature\Livewire;
 
 use App\Models\Agreement;
+use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -24,16 +25,29 @@ class ComponentResolutionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_all_four_existing_components_resolve_by_name_after_the_move(): void
+    public function test_all_seven_components_resolve_by_name(): void
     {
         $agreement = Agreement::factory()->signed()->create();
+        $submission = Submission::factory()->create();
 
         $this->actingAs(User::factory()->admin()->create());
 
+        // Agreement Register components.
         Livewire::test('agreements-index')->assertOk();
         Livewire::test('agreement-show', ['agreement' => $agreement])->assertOk();
         Livewire::test('agreement-form')->assertOk();
         Livewire::test('user-manager')->assertOk();
+
+        // Legal Submission Portal components, under the nested
+        // resources/views/livewire/submissions/ directory.
+        $this->actingAs(User::factory()->requester()->create());
+        Livewire::test('submissions.submission-form')->assertOk();
+
+        $this->actingAs(User::factory()->admin()->create());
+        Livewire::test('submissions.submissions-index')->assertOk();
+
+        $this->actingAs(User::factory()->legal()->create());
+        Livewire::test('submissions.submission-show', ['submission' => $submission])->assertOk();
     }
 
     public function test_no_livewire_component_files_remain_in_the_views_components_directory(): void
@@ -67,9 +81,18 @@ class ComponentResolutionTest extends TestCase
     {
         $offenders = [];
 
-        foreach (glob(resource_path('views/livewire').'/*.blade.php') as $path) {
-            if (preg_match('/^\x{26A1}/u', basename($path))) {
-                $offenders[] = basename($path);
+        // Scan recursively: portal components live under livewire/submissions/.
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(resource_path('views/livewire'), \FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($files as $file) {
+            if (! str_ends_with($file->getFilename(), '.blade.php')) {
+                continue;
+            }
+
+            if (preg_match('/^\x{26A1}/u', basename($file->getPathname()))) {
+                $offenders[] = $file->getPathname();
             }
         }
 
@@ -80,5 +103,15 @@ class ComponentResolutionTest extends TestCase
             .'make_command.emoji => false in config/livewire.php. Offending file(s): '
             .implode(', ', $offenders)
         );
+    }
+
+    public function test_the_three_portal_components_live_in_the_submissions_subdirectory(): void
+    {
+        foreach (['submissions-index', 'submission-form', 'submission-show'] as $name) {
+            $this->assertFileExists(
+                resource_path("views/livewire/submissions/{$name}.blade.php"),
+                "The {$name} portal component must live under livewire/submissions/."
+            );
+        }
     }
 }

@@ -1,6 +1,6 @@
 # LP1 — Legal Submission Portal Foundation
 
-> **Status:** Approved by Amir on 14 Sep 2026. Amendment 1 approved by Amir on 14 Sep 2026; see S20.
+> **Status:** Approved by Amir on 14 Sep 2026. Amendment 1 approved by Amir on 14 Sep 2026; see S20. Amendment 2 approved by Amir on 17 Sep 2026; see S21.
 > **Date:** 14 Sep 2026
 > **Scope:** Submission records, creation, role-aware lists, detail visibility, and creation audit history.
 > **Repository:** Existing CLSD Agreement Register; Laravel 13, Livewire 4, SQLite locally, MySQL 8.4 in production.
@@ -28,7 +28,7 @@ The repository already provides the foundations LP1 needs:
 
 Active-account enforcement currently applies at login only. A deactivated user may keep an already-authenticated session; this pre-existing gap is recorded as DEF-013 in `docs/qa/defect-log.md` and is not fixed in LP1-A.
 
-LP1 should introduce a separate `Submission` domain rather than add fields to `Agreement`. A submission has a different owner, audience, lifecycle, and confidentiality boundary. Keeping the domains separate also prevents Requesting Staff from accidentally gaining a path into the Agreement Register.
+LP1 should introduce a separate `Submission` domain rather than add fields to `Agreement`. A submission has a different owner, audience, lifecycle, and confidentiality boundary. Keeping the domains separate prevents a requester's private submission access from becoming access to another requester's records. Agreement Register access remains a separate read-only reference permission for non-Legal users.
 
 ## S3. Confirmed decisions
 
@@ -40,6 +40,7 @@ The following decisions are locked for LP1:
 4. The V1 interface, model API, routes, and workflow do not expose or use the Agreement link.
 5. The internal role value remains `requester`; the interface says **Requesting Staff**.
 6. Livewire components remain emoji-free single-file components. LP1 does not introduce a mixed class-based architecture.
+7. Requesting Staff retain read-only access to the Agreement Register, like Viewer users. This does not grant access to `pending` agreements or any register mutation. See Amendment 2 in S21.
 
 ## S4. LP1 user stories
 
@@ -49,6 +50,7 @@ The following decisions are locked for LP1:
 - See a list containing only submissions they personally created.
 - Open only their own submission details.
 - See that a submitted request is `Pending` and locked.
+- Use the Agreement Register as a read-only reference, excluding agreements still in internal Legal vetting (`document_status = pending`).
 
 ### Legal and Admin
 
@@ -58,6 +60,7 @@ The following decisions are locked for LP1:
 
 ### Viewer
 
+- Use the Agreement Register as a read-only reference, excluding agreements still in internal Legal vetting (`document_status = pending`).
 - See no portal navigation.
 - Receive `403 Forbidden` for portal entry routes.
 
@@ -273,7 +276,7 @@ The navigation should show:
 - **Submission Queue** to Legal and Admin; and
 - no portal link to Viewer.
 
-The Requesting Staff dashboard should replace its placeholder portal message with a clear **Create Submission** and/or **My Submissions** entry point. Existing Agreement Register gates remain unchanged.
+The Requesting Staff dashboard should provide clear **Create Submission**, **My Submissions**, and **Open register** entry points. The Agreement Register read routes allow Admin, Legal, Viewer, and Requesting Staff; create/edit routes remain Admin/Legal only. The existing pending-agreement global scope continues hiding `document_status = pending` records from both Viewer and Requesting Staff users.
 
 ## S13. Validation and safe input handling
 
@@ -353,7 +356,9 @@ Refetch rule (amended 14 Sep 2026; see S20): authorization and persistence asser
 
 - role-appropriate portal labels appear;
 - Viewer sees no portal navigation;
-- Requesting Staff sees no Agreement Register navigation;
+- Requesting Staff sees Agreement Register navigation alongside **My Submissions**;
+- Requesting Staff can open the Agreement Register list and non-pending detail records but receives no register mutation controls;
+- Requesting Staff cannot see a pending agreement in list counts, filters, year options, search results, or direct detail access;
 - Legal/Admin detail pages identify the requester;
 - Requesting Staff detail pages do not expose internal-only controls or fields.
 
@@ -418,6 +423,7 @@ This order establishes the security boundary before exposing the records through
 - requester creation form;
 - requester-owned list and detail;
 - Legal/Admin shared queue and detail;
+- read-only Agreement Register access for Requesting Staff, with the same pending-record confidentiality boundary as Viewer;
 - route, query, policy, and Livewire-action authorization;
 - navigation and dashboard entry points; and
 - automated tests and QA traceability updates.
@@ -505,3 +511,30 @@ Acceptance criteria:
 | 9 | Recorded the pre-existing deactivated-session gap as DEF-013. It is documented only and is not fixed in LP1-A. | S2, S16, S18 |
 
 LP1-A acceptance criteria 9 to 15 in S19 were added by this amendment.
+
+## S21. Amendment 2 — 17 Sep 2026 — Requesting Staff Agreement Register access
+
+**Status:** Approved by Amir on 17 Sep 2026. This amendment supersedes the earlier rule that Requesting Staff have no Agreement Register access.
+
+**Reason:** The Agreement Register and Legal Submission Portal serve different audiences and confidentiality boundaries. The Register is the institutional reference list of agreements for authenticated UniKL users. Submissions are private working requests. Blocking Requesting Staff from the Register confused submission ownership with reference access and prevented staff from consulting existing agreements before or after submitting a request.
+
+The corrected access contract is:
+
+| Role | Agreement Register | Legal Submission Portal |
+|---|---|---|
+| Requesting Staff | Read-only; non-pending agreements only | Create and view own submissions only |
+| Viewer | Read-only; non-pending agreements only | No access |
+| Legal | Full working access, including pending agreements | View all submissions |
+| Admin | Full access, including pending agreements | View all submissions |
+| Guest | No access | No access |
+
+This amendment does not make the Register public and does not weaken submission isolation. In particular:
+
+1. `role:admin,legal,viewer,requester` gates Agreement Register list and detail routes inside `auth`.
+2. Agreement create and edit routes remain `role:admin,legal` only.
+3. Register mutation controls remain governed by `canWrite()` and therefore remain unavailable to Requesting Staff and Viewer.
+4. The existing pending-agreement global scope remains unchanged. Requesting Staff and Viewer receive no pending rows, counts, filters, year options, search results, or direct detail record; direct access resolves as `404`.
+5. Portal routes and `SubmissionPolicy` remain unchanged: Requesting Staff see only their own submissions, Viewer sees none, and Legal/Admin see all.
+6. The Register is not limited permanently to 2022–2026. Those are the current data years; future agreement years continue to appear normally.
+
+The bounded Senior Developer handoff is `docs/handoff-lp1-register-access.md`. LP1 must not be approved for commit or deployment until that correction is implemented, the automated suite passes, and Amir completes the manual role walkthrough.

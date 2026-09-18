@@ -60,6 +60,158 @@ class AgreementsIndexTest extends TestCase
             ->assertDontSee('Pending');
     }
 
+    public function test_requester_does_not_see_pending_agreements_in_the_list(): void
+    {
+        Agreement::factory()->pending()->create(['title' => 'Hidden Pending']);
+        Agreement::factory()->signed()->create(['title' => 'Visible Signed']);
+
+        $this->actingAs(User::factory()->requester()->create());
+
+        Livewire::test('agreements-index')
+            ->assertSee('Visible Signed')
+            ->assertDontSee('Hidden Pending');
+    }
+
+    public function test_requester_pagination_total_excludes_pending_rows(): void
+    {
+        Agreement::factory()->signed()->count(18)->create();
+        Agreement::factory()->pending()->count(3)->create();
+
+        $this->actingAs(User::factory()->requester()->create());
+
+        Livewire::test('agreements-index')
+            ->assertSeeHtml('<span class="font-medium">18</span>')
+            ->assertDontSeeHtml('<span class="font-medium">21</span>');
+    }
+
+    public function test_pending_is_not_offered_as_a_status_filter_to_a_requester(): void
+    {
+        $this->actingAs(User::factory()->requester()->create());
+
+        Livewire::test('agreements-index')
+            ->assertDontSee('value="pending"')
+            ->assertDontSee('Pending');
+    }
+
+    public function test_year_dropdown_options_respect_the_pending_visibility_scope_for_a_requester(): void
+    {
+        Agreement::factory()->signed()->create([
+            'title' => 'Signed 2024',
+            'agreement_date' => '2024-05-01',
+        ]);
+        Agreement::factory()->pending()->create([
+            'title' => 'Pending 2022',
+            'agreement_date' => '2022-01-01',
+        ]);
+
+        $this->actingAs(User::factory()->requester()->create());
+
+        $requesterYears = Livewire::test('agreements-index')->instance()->availableYears;
+
+        $this->assertContains(2024, $requesterYears->toArray());
+        $this->assertNotContains(2022, $requesterYears->toArray());
+    }
+
+    public function test_search_results_exclude_pending_agreements_for_a_requester(): void
+    {
+        Agreement::factory()->pending()->create([
+            'title' => 'Pending Alpha Matter',
+            'agreement_date' => '2024-05-01',
+        ]);
+        Agreement::factory()->signed()->create([
+            'title' => 'Signed Alpha Agreement',
+            'agreement_date' => '2024-05-01',
+        ]);
+
+        $this->actingAs(User::factory()->requester()->create());
+
+        Livewire::test('agreements-index', ['search' => 'Alpha'])
+            ->assertSee('Signed Alpha Agreement')
+            ->assertDontSee('Pending Alpha Matter');
+    }
+
+    public function test_document_status_filter_results_exclude_pending_agreements_for_a_requester(): void
+    {
+        Agreement::factory()->pending()->create([
+            'title' => 'Hidden Pending',
+            'document_status' => 'pending',
+        ]);
+        Agreement::factory()->signed()->create([
+            'title' => 'Hidden Signed',
+            'document_status' => 'signed',
+        ]);
+
+        $this->actingAs(User::factory()->requester()->create());
+
+        // The pending option is not rendered for a requester, but the filter is
+        // URL-backed and can still be set by hand (see the hostile-filter tests
+        // below); either way the global scope keeps pending rows out.
+        Livewire::test('agreements-index', ['documentStatus' => 'signed'])
+            ->assertSee('Hidden Signed')
+            ->assertDontSee('Hidden Pending');
+    }
+
+    /**
+     * Hostile URL-backed filter values. The filter properties bind from the
+     * query string, so a Requester or Viewer can set them directly in the URL
+     * even though the pending option is never rendered. The pending global
+     * scope must keep winning over user-supplied filters; this is coverage
+     * hardening of an already-safe query path (DEF-014-style hardening, not a
+     * second confirmed vulnerability).
+     */
+    public function test_a_pending_document_status_filter_value_cannot_reveal_pending_agreements(): void
+    {
+        Agreement::factory()->pending()->create(['title' => 'Pending Only Matter']);
+        Agreement::factory()->signed()->create(['title' => 'Signed Matter']);
+
+        foreach (['requester', 'viewer'] as $role) {
+            $this->actingAs(User::factory()->{$role}()->create());
+
+            Livewire::test('agreements-index', ['documentStatus' => 'pending'])
+                ->assertDontSee('Pending Only Matter')
+                ->assertDontSee('Signed Matter')
+                ->assertSee('No agreements found.');
+        }
+    }
+
+    public function test_a_pending_only_year_and_the_combined_filter_cannot_reveal_pending_agreements(): void
+    {
+        Agreement::factory()->pending()->create([
+            'title' => 'Pending 2022 Matter',
+            'agreement_date' => '2022-03-15',
+        ]);
+        Agreement::factory()->signed()->create([
+            'title' => 'Signed 2024 Matter',
+            'agreement_date' => '2024-03-15',
+        ]);
+
+        foreach (['requester', 'viewer'] as $role) {
+            $this->actingAs(User::factory()->{$role}()->create());
+
+            Livewire::test('agreements-index', ['year' => '2022'])
+                ->assertDontSee('Pending 2022 Matter')
+                ->assertDontSee('Signed 2024 Matter')
+                ->assertSee('No agreements found.');
+
+            Livewire::test('agreements-index', [
+                'documentStatus' => 'pending',
+                'year' => '2022',
+            ])
+                ->assertDontSee('Pending 2022 Matter')
+                ->assertDontSee('Signed 2024 Matter')
+                ->assertSee('No agreements found.');
+        }
+    }
+
+    public function test_requester_does_not_see_the_create_button(): void
+    {
+        $this->actingAs(User::factory()->requester()->create());
+
+        $this->get(route('agreements.index'))
+            ->assertOk()
+            ->assertDontSee('Create agreement');
+    }
+
     public function test_search_matches_title(): void
     {
         Agreement::factory()->signed()->create(['title' => 'Alpha Agreement']);

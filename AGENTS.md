@@ -35,8 +35,10 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
   the `in:` rule in the user-manager component and by `EnsureUserHasRole`. Still NOT a case for
   spatie/laravel-permission unless per-action granularity becomes necessary.
 - `requester` = non-Legal staff who submit agreement requests through the Legal Submission Portal.
-  They have **no access to the Agreement Register at all** — the register routes are gated
-  `role:admin,legal,viewer`. Do not loosen that gate.
+  They also use the Agreement Register as a read-only reference, like Viewer users. Register list
+  and detail routes are gated `role:admin,legal,viewer,requester`; create/edit and every mutation
+  remain Admin/Legal only. Requesters still see only their own submissions. This correction was
+  approved 17 Sep 2026 in LP1 Amendment 2.
 - `agreements.expiry_date = null` means indefinite/until-completion, not missing data. Most date columns are nullable because historical imports lack them.
 - `php artisan db:seed` runs only `CampusSeeder` (idempotent `updateOrInsert`): 12 UniKL institutes + central units + `TBD`. `countries.is_domestic` drives the Dalam/Luar Negara display.
 
@@ -104,8 +106,17 @@ The full architecture report and the LP1–LP6 roadmap live in the LP0 plan docu
 - **Every Livewire action authorises for itself.** `user-manager`'s `create()` and `toggle()` now
   call `abort_unless(...->canManageUsers(), 403)`. Blade `@if` blocks are presentation, never the
   control. Follow this in every new component.
-- **The Agreement Register is role-gated** (`role:admin,legal,viewer`), nested inside the `auth`
-  group so guests still redirect to `/login` rather than getting a 403.
+- **Eloquent global scopes do not re-apply to Livewire-restored models.** Livewire restores public
+  Eloquent model properties through `newQueryForRestoration()`, which runs an **unscoped** query —
+  so during `/livewire/update` a global scope is NOT automatically applied again. A component whose
+  public model property is protected by a global scope must re-resolve that model under the current
+  user's scopes during hydration (and 404 when it is no longer visible). `agreement-show` does this
+  in `boot()` and is the reference implementation; follow it in any future component holding a
+  scoped model.
+- **The Agreement Register is role-gated** (`role:admin,legal,viewer,requester` for list/detail;
+  `role:admin,legal` for create/edit), nested inside the `auth` group so guests still redirect to
+  `/login` rather than getting a 403. Requesting Staff and Viewer remain read-only and the pending
+  global scope hides records still in internal Legal vetting from both roles.
 - **`documents` disk** added for P&C files: private, `serve => false`, `throw => true`, driver from
   `DOCUMENTS_DISK_DRIVER`. `serve => false` is load-bearing — `serve => true` registers
   `/storage/{path}` routes that hand files to anyone with a signed URL, with no per-user check and

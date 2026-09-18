@@ -28,23 +28,26 @@ class RequesterRoleTest extends TestCase
         $this->assertFalse($requester->canWrite());
         $this->assertFalse($requester->canSeePending());
         $this->assertFalse($requester->canManageUsers());
-        $this->assertFalse($requester->canAccessRegister());
+
+        // LP1 Amendment 2 (17 Sep 2026): requesters use the Agreement Register
+        // as a read-only reference, like viewers.
+        $this->assertTrue($requester->canAccessRegister());
     }
 
-    public function test_requester_is_forbidden_from_the_agreements_index(): void
+    public function test_requester_can_open_the_agreements_index(): void
     {
         $this->actingAs(User::factory()->requester()->create());
 
-        $this->get(route('agreements.index'))->assertStatus(403);
+        $this->get(route('agreements.index'))->assertOk();
     }
 
-    public function test_requester_is_forbidden_from_an_agreement_show_page(): void
+    public function test_requester_can_open_a_non_pending_agreement_show_page(): void
     {
         $agreement = Agreement::factory()->signed()->create();
 
         $this->actingAs(User::factory()->requester()->create());
 
-        $this->get(route('agreements.show', $agreement))->assertStatus(403);
+        $this->get(route('agreements.show', $agreement))->assertOk();
     }
 
     public function test_requester_is_forbidden_from_agreement_create_and_edit(): void
@@ -73,13 +76,13 @@ class RequesterRoleTest extends TestCase
 
     /**
      * The no-regression assertion: gating the register must not change anything
-     * for the three roles that already had access to it.
+     * for the roles that have access to it.
      */
-    public function test_admin_legal_and_viewer_still_reach_the_register(): void
+    public function test_admin_legal_viewer_and_requester_still_reach_the_register(): void
     {
         $agreement = Agreement::factory()->signed()->create();
 
-        foreach (['admin', 'legal', 'viewer'] as $role) {
+        foreach (['admin', 'legal', 'viewer', 'requester'] as $role) {
             $this->actingAs(User::factory()->{$role}()->create());
 
             $this->get(route('agreements.index'))->assertOk();
@@ -117,13 +120,13 @@ class RequesterRoleTest extends TestCase
             ->assertSee('Requesting Staff');
     }
 
-    public function test_the_register_nav_link_is_hidden_from_a_requester(): void
+    public function test_the_register_nav_link_is_shown_to_a_requester(): void
     {
         $this->actingAs(User::factory()->requester()->create());
 
         $this->get(route('dashboard'))
             ->assertOk()
-            ->assertDontSee(route('agreements.index'));
+            ->assertSee(route('agreements.index'));
     }
 
     public function test_the_register_nav_link_is_still_shown_to_a_viewer(): void
