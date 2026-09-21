@@ -51,13 +51,13 @@
 2. Submit valid credentials for the inactive user.
 
 **Expected result**
-Active user logs in; inactive user is rejected with the generic `auth.failed` message.
+Active user logs in. Inactive user is rejected; with the correct password, the error explains deactivation and names CLSD Legal. An incorrect password stays generic (TC-003).
 
 **Automated by**
 `LoginTest::test_user_can_login_with_valid_credentials`  
 `LoginTest::test_inactive_user_cannot_login`
 
-**Status** Pass (24 Aug 2026)
+**Status** Pass (21 Sep 2026 DEF-013 update; release verification pending)
 
 ---
 
@@ -72,16 +72,18 @@ Active user logs in; inactive user is rejected with the generic `auth.failed` me
 | **Preconditions** | One valid user exists |
 
 **Steps**
-1. Submit a known email with a wrong password.
+1. Submit a known active email with a wrong password.
 2. Submit an unknown email with any password.
+3. Submit a known inactive email with a wrong password.
 
 **Expected result**
-Both attempts return the same single-field error message; no indication of which email exists.
+All three attempts return the same generic single-field error message; no indication of which email exists or whether the account is deactivated.
 
 **Automated by**
-`LoginTest::test_login_error_does_not_reveal_whether_the_email_exists`
+- `LoginTest::test_login_error_does_not_reveal_whether_the_email_exists`
+- `LoginTest::test_inactive_user_with_wrong_password_gets_the_generic_error`
 
-**Status** Pass (24 Aug 2026)
+**Status** Pass (21 Sep 2026 DEF-013 update; release verification pending)
 
 ---
 
@@ -156,6 +158,114 @@ HTTP 404 Not Found.
 `RegistrationDisabledTest::test_registration_route_does_not_exist`
 
 **Status** Pass (24 Aug 2026)
+
+---
+
+### TC-090 — A surviving inactive session is rejected on the next page request
+
+| | |
+|---|---|
+| **Feature area** | Authentication & Session |
+| **Business rule** | BR-02 — Every authenticated web request checks `is_active` |
+| **Priority** | Critical |
+| **Type** | Automated and local browser |
+| **Preconditions** | Active user is signed in; deactivation occurs out of band so the session survives |
+
+**Steps**
+1. Open the Register while active.
+2. Set `is_active = false` outside the Admin UI and request the Register again.
+
+**Expected result**
+The user is logged out, redirected to `/login`, and shown the CLSD Legal deactivation notice. Guests and active users are unaffected.
+
+**Automated by**
+- `InactiveUserAccessTest::test_an_existing_session_is_rejected_after_out_of_band_deactivation`
+- `InactiveUserAccessTest::test_guest_can_open_login_without_a_redirect_loop`
+
+**Status** Pass (automated and isolated local browser, 21 Sep 2026); release verification pending
+
+---
+
+### TC-091 — A Livewire update cannot continue after deactivation
+
+| | |
+|---|---|
+| **Feature area** | Authentication & Session |
+| **Business rule** | BR-02, BR-47, BR-51 — Livewire updates use the web-group active-user check |
+| **Priority** | Critical |
+| **Type** | Automated and local browser |
+| **Preconditions** | Active user has opened the Register and can use its search filter |
+
+**Steps**
+1. Send a real, valid Livewire update while active as a positive control.
+2. Set the account inactive without purging the session and send another update.
+
+**Expected result**
+The update does not render protected data. The browser navigates to `/login?deactivated=1` and visibly shows the notice, without a Livewire error overlay. The URL marker is needed because Livewire consumes a one-time flash during its background redirect.
+
+**Automated by**
+- `InactiveUserAccessTest::test_a_real_livewire_update_is_rejected_after_out_of_band_deactivation`
+- `LivewireRoleEnforcementTest::test_active_user_check_is_registered_in_the_web_group`
+
+**Status** Pass (automated and isolated local browser, 21 Sep 2026); release verification pending
+
+---
+
+### TC-092 — Remember me cannot restore a deactivated account
+
+| | |
+|---|---|
+| **Feature area** | Authentication & Session |
+| **Business rule** | BR-02 — A rotated or surviving recaller token gives no inactive account access |
+| **Priority** | Critical |
+| **Type** | Automated |
+| **Preconditions** | User signed in with Remember me; a fresh browser state retains only the recaller cookie |
+
+**Steps**
+1. Prove a fresh browser without a recaller stays a guest and a valid recaller restores an active user.
+2. Deactivate through the action, rotate the token, and replay the old recaller.
+3. Separately deactivate out of band without rotating the token and replay it.
+
+**Expected result**
+Both inactive cases are denied. In the out-of-band case, middleware logs out the restored inactive user and shows the notice. An old cookie may remain in the browser but is unusable.
+
+**Automated by**
+- `InactiveUserAccessTest::test_a_fresh_browser_without_a_recaller_remains_a_guest`
+- `InactiveUserAccessTest::test_a_valid_recaller_restores_an_active_user_in_a_fresh_browser`
+- `InactiveUserAccessTest::test_a_rotated_remember_token_cannot_restore_a_deactivated_user`
+- `InactiveUserAccessTest::test_an_unrotated_remember_token_is_rejected_by_the_middleware`
+
+**Status** Pass (automated, 21 Sep 2026); fresh-browser manual check pending
+
+---
+
+### TC-093 — Admin deactivation revokes sessions and explains blocked login
+
+| | |
+|---|---|
+| **Feature area** | Authentication & Session |
+| **Business rule** | BR-02, BR-42 — Admin deactivation revokes access and explains a valid-password denial |
+| **Priority** | Critical |
+| **Type** | Automated and local browser |
+| **Preconditions** | Admin and target user exist |
+
+**Steps**
+1. Deactivate the target through the user-manager action; check token rotation and deletion of that user's database sessions only.
+2. Attempt login with the correct password, then a wrong password.
+3. Reactivate the account and check that reactivation does not rotate the token or purge sessions.
+
+**Expected result**
+The target is signed out; a later correct-password login attempt gives the CLSD Legal notice, while a wrong password remains generic. Other users' sessions survive, and a reactivated user can sign in normally.
+
+**Automated by**
+- `UserManagementTest::test_deactivation_rotates_the_remember_token_and_purges_only_that_users_database_sessions`
+- `UserManagementTest::test_deactivation_uses_the_configured_session_table`
+- `UserManagementTest::test_reactivation_does_not_rotate_the_token_or_purge_sessions`
+- `UserManagementTest::test_deactivated_user_cannot_log_in`
+- `LoginTest::test_inactive_user_cannot_login`
+- `LoginTest::test_inactive_user_with_wrong_password_gets_the_generic_error`
+
+**Status** Pass (automated and isolated local browser, 21 Sep 2026); two-browser Admin UI check pending
 
 ---
 
@@ -1562,12 +1672,12 @@ The database still shows `is_active = true` for the admin.
 2. Log out and attempt to log in as the deactivated user.
 
 **Expected result**
-Login is rejected with the generic `auth.failed` message.
+Login is rejected. A correct password shows the deactivation message naming CLSD Legal; a wrong password remains generic.
 
 **Automated by**
 `UserManagementTest::test_deactivated_user_cannot_log_in`
 
-**Status** Pass (27 Aug 2026)
+**Status** Pass (21 Sep 2026 DEF-013 update; release verification pending)
 
 ---
 
@@ -2117,7 +2227,7 @@ Non-admin actions have no effect. Admin actions complete successfully. Route mid
 2. Attempt to log in using that account.
 
 **Expected result**
-Login is rejected with the generic authentication failure response.
+Login is rejected. With the correct password, the user sees the deactivation message; a wrong password remains generic. The 14 Sep production check predates the DEF-013 message change.
 
 **Automated by**
 `UserManagementTest::test_deactivated_user_cannot_log_in`
@@ -2125,7 +2235,7 @@ Login is rejected with the generic authentication failure response.
 **Production verification**
 Passed 14 Sep 2026 using the temporary requester account from TC-078.
 
-**Status** Pass (14 Sep 2026)
+**Status** Pass locally after DEF-013 (21 Sep 2026); updated production check pending
 
 ---
 
@@ -2151,7 +2261,7 @@ Passed 14 Sep 2026 using the temporary requester account from TC-078.
 5. Probe for update/delete routes: check the route collection and issue `PUT`, `DELETE`, and `POST` verbs against the portal paths.
 
 **Expected result**
-Guests are redirected to `/login`. Viewers receive `403` on every portal route. Legal and Admin receive `200` for index and show but `403` for create. Requesting Staff receive `200` for index, create, and their own detail. No update or delete route exists; non-GET verbs return `405 Method Not Allowed`.
+Guests are redirected to `/login`. Inactive users are logged out and redirected to `/login`, with the deactivation flash when their session survives. Active viewers receive `403` on every portal route. Active Legal and Admin receive `200` for index and show but `403` for create. Active Requesting Staff receive `200` for index, create, and their own detail. No update or delete route exists; non-GET verbs return `405 Method Not Allowed`.
 
 **Automated by**
 `PortalAccessTest::test_guests_are_redirected_to_login_for_every_portal_route`
@@ -2162,7 +2272,7 @@ Guests are redirected to `/login`. Viewers receive `403` on every portal route. 
 `PortalAccessTest::test_inactive_admin_and_legal_are_denied_the_show_route`
 `PortalAccessTest::test_no_update_or_delete_routes_exist`
 
-**Status** Pass (15 Sep 2026)
+**Status** Pass (21 Sep 2026 DEF-013 redirect update; release verification pending)
 
 ---
 
@@ -2278,7 +2388,7 @@ Each rejection maps to errors on exactly its expected field — empty title → 
 6. Replay the index component snapshot as a viewer whose own `created_by` data would otherwise be exposed, and as an inactive requester, an inactive Admin, and an inactive Legal user, each expecting `403 Forbidden`.
 
 **Expected result**
-Every replayed snapshot is denied with the exact expected status (404 for cross-requester detail access, 403 for every other denial), and nothing is written. Each negative is paired with an in-test positive control (the legitimate user rendering or refreshing first).
+Direct component replay tests retain their expected 404 for cross-requester detail access and 403 for other unauthorized component actions; nothing is written. A real HTTP Livewire update from an inactive user is intercepted earlier by web middleware and redirected to login (TC-091). Each negative is paired with an active-user control.
 
 **Automated by**
 `SubmissionShowTest::test_cross_requester_denial_holds_on_a_real_livewire_update_request`

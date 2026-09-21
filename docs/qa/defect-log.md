@@ -477,7 +477,7 @@ Registered `EnsureUserHasRole` as Livewire persistent middleware and added `abor
 | **Component** | `app/Http/Controllers/Auth/AuthenticatedSessionController.php`, `app/Http/Middleware/EnsureUserHasRole.php`, authentication middleware, remember-me login |
 | **Severity** | Major |
 | **Priority** | High |
-| **Status** | Open — documented only; not fixed in LP1-A |
+| **Status** | Fixed locally — independent review and production verification pending |
 
 **Description**
 Deactivating an account (`users.is_active = false`) prevents that user from logging in again, but it does not end access they already have. The `is_active` flag is checked only when credentials are submitted at login. A user who is signed in when an admin deactivates them may keep using the application, including the Agreement Register and, once LP1-B routes exist, the Legal Submission Portal.
@@ -503,15 +503,15 @@ Step 3 continues to load the register until the session expires. Because the rem
 - `SessionGuard::userFromRecaller()` restores a user from the remember-me cookie using the stored user ID and token alone, so the login-time `is_active` check is bypassed.
 - Deactivation in `user-manager` changes `is_active` but does not invalidate the user's database sessions or rotate their `remember_token`.
 
-**Fix / disposition**
-Deferred. Explicitly excluded from LP1-A (`docs/architecture-plan-lp1.md` S18 and S20; `docs/handoff-lp1a.md` S4), which is limited to submission schema, models, creation, and authorization.
+**Fix**
+The separately approved DEF-013 change adds `EnsureUserIsActive` to the `web` middleware group. It logs out an authenticated inactive user, invalidates their session, and redirects to login. This covers ordinary pages and the real Livewire update route. Admin deactivation now rotates `remember_token` and deletes that user's rows from the configured database session table; reactivation does neither.
 
-Partial mitigation planned in LP1-A: `SubmissionPolicy` denies every portal ability to inactive users, so submission records will not be exposed through the policy. This does not protect the Agreement Register or any non-policy route, so it is not a fix.
-
-A recommended fix, for a separately approved milestone: an authenticated middleware check that logs out and rejects inactive users on every request, including Livewire update requests; and, on deactivation, deleting that user's database sessions and rotating their `remember_token`. Add tests for both an existing session and a remember-me cookie.
+The notice has two delivery paths. An inactive session that survives deactivation receives a flash message on a normal page request. A Livewire update carries a `deactivated=1` redirect marker because Livewire's background fetch consumes a one-time flash before navigating the visible page. When session deletion or token rotation makes the next request anonymous, the person first sees a bare login page; a subsequent correct-password login attempt explains the deactivation. Wrong passwords and unknown email addresses retain the generic failure response. A stale remember cookie may remain in the browser but can no longer authenticate.
 
 **Verification**
-None yet. The defect remains open until a fix is approved, implemented, and verified with automated tests and a browser check covering both an active session and a remember-me cookie.
+On 21 Sep 2026, `composer test` passed with **355 tests and 1,207 assertions**; Pint passed. `InactiveUserAccessTest` covers a surviving session on a page request, a real HTTP Livewire update with an active-user control, rotated and unrotated remember tokens with fresh-browser controls, and guest access. `UserManagementTest` covers token rotation, session purging, and reactivation; `LoginTest` covers correct and wrong passwords for inactive users. The three `PortalAccessTest` expectations affected by the new login redirect were updated and passed.
+
+An isolated local SQLite browser check on 21 Sep 2026 confirmed that an out-of-band inactive account is redirected with the notice on a page reload, that a Livewire filter update navigates to a visibly marked login page without an error overlay, and that the deactivation action removes access while a later correct-password attempt explains why. The action was invoked against a fictional local account; a two-browser Admin UI walkthrough and a fresh-browser remember-cookie walkthrough remain for Amir's release check. Claude Code's independent diff review and production verification are also pending. See `docs/handoff-def-013.md`.
 
 ---
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\DeactivateUser;
 use App\Models\User;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -55,8 +56,13 @@ new class extends Component
         }
 
         $user = User::findOrFail($userId);
-        $user->is_active = ! $user->is_active;
-        $user->save();
+
+        if ($user->is_active) {
+            app(DeactivateUser::class)($user);
+        } else {
+            $user->is_active = true;
+            $user->save();
+        }
     }
 };
 ?>

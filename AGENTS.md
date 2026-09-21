@@ -103,6 +103,13 @@ The full architecture report and the LP1–LP6 roadmap live in the LP0 plan docu
   exploitable before the fix:** with the component's own check removed, a `legal`, `viewer` or
   `requester` account could each create an **admin** user through `user-manager`. Persistent
   middleware is defence in depth, NOT a licence to skip in-method checks.
+- **Inactive accounts are rejected by the `web` middleware group.** DEF-013 adds
+  `EnsureUserIsActive` to that group so normal pages and Livewire updates both
+  check account state. Livewire's update route already uses `web` directly
+  (`HandleRequests.php`), so this middleware does not need
+  `Livewire::addPersistentMiddleware()`. Admin deactivation also rotates the
+  remember token and removes database sessions; the middleware catches any
+  inactive session that remains.
 - **Every Livewire action authorises for itself.** `user-manager`'s `create()` and `toggle()` now
   call `abort_unless(...->canManageUsers(), 403)`. Blade `@if` blocks are presentation, never the
   control. Follow this in every new component.

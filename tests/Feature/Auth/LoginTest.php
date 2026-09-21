@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -57,6 +58,21 @@ class LoginTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_inactive_user_with_wrong_password_gets_the_generic_error(): void
+    {
+        User::factory()->inactive()->create([
+            'email' => 'inactive@unikl.edu.my',
+            'password' => 'password',
+        ]);
+
+        $this->post('/login', [
+            'email' => 'inactive@unikl.edu.my',
+            'password' => 'wrong-password',
+        ])->assertSessionHasErrors(['email' => __('auth.failed')]);
+
+        $this->assertGuest();
+    }
+
     public function test_login_error_does_not_reveal_whether_the_email_exists(): void
     {
         $response = $this->post('/login', [
@@ -79,7 +95,7 @@ class LoginTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertSessionHasErrors(['email' => __('auth.failed')]);
+        $response->assertSessionHasErrors(['email' => EnsureUserIsActive::DEACTIVATED_MESSAGE]);
         $this->assertGuest();
     }
 

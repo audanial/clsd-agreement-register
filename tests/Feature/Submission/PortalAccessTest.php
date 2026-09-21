@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Submission;
 
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -11,8 +12,8 @@ use Tests\TestCase;
 /**
  * HTTP route-level authorization for the Legal Submission Portal.
  *
- * Layering: `auth` middleware redirects guests to /login; `role:` middleware
- * returns 403 for every role outside the route's allow-list; the
+ * Layering: the web group logs out inactive users and redirects to /login;
+ * `auth` redirects guests; `role:` returns 403 for roles outside the allow-list; the
  * SubmissionPolicy (tested separately, and through the pages below) handles
  * record-level access such as the cross-requester 404.
  */
@@ -96,7 +97,9 @@ class PortalAccessTest extends TestCase
         foreach (['admin', 'legal'] as $role) {
             $this->actingAs(User::factory()->{$role}()->inactive()->create());
 
-            $this->get('/submissions')->assertForbidden();
+            $this->get('/submissions')
+                ->assertRedirect('/login')
+                ->assertSessionHas('status', EnsureUserIsActive::DEACTIVATED_MESSAGE);
         }
     }
 
@@ -105,7 +108,9 @@ class PortalAccessTest extends TestCase
         foreach (['admin', 'legal'] as $role) {
             $this->actingAs(User::factory()->{$role}()->inactive()->create());
 
-            $this->get('/submissions/'.$this->submission->id)->assertForbidden();
+            $this->get('/submissions/'.$this->submission->id)
+                ->assertRedirect('/login')
+                ->assertSessionHas('status', EnsureUserIsActive::DEACTIVATED_MESSAGE);
         }
     }
 
@@ -116,10 +121,10 @@ class PortalAccessTest extends TestCase
 
         $this->actingAs(User::query()->findOrFail($inactive->id));
 
-        $this->get('/submissions')->assertForbidden();
-        $this->get('/submissions/create')->assertForbidden();
+        $this->get('/submissions')->assertRedirect('/login');
+        $this->get('/submissions/create')->assertRedirect('/login');
         // Even the requester's own submission is denied while inactive.
-        $this->get('/submissions/'.$ownSubmission->id)->assertForbidden();
+        $this->get('/submissions/'.$ownSubmission->id)->assertRedirect('/login');
     }
 
     public function test_no_update_or_delete_routes_exist(): void

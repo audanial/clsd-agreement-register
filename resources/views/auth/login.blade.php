@@ -7,6 +7,12 @@
         <div class="w-full max-w-md rounded-lg bg-white p-8 shadow">
             <h1 class="mb-6 text-center text-2xl font-semibold">Log in</h1>
 
+            @if (session('status') || request()->boolean('deactivated'))
+                <p role="status" class="mb-4 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    {{ session('status') ?: \App\Http\Middleware\EnsureUserIsActive::DEACTIVATED_MESSAGE }}
+                </p>
+            @endif
+
             <form method="POST" action="{{ route('login') }}" class="space-y-4">
                 @csrf
 

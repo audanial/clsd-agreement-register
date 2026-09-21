@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,9 +28,15 @@ class AuthenticatedSessionController extends Controller
         $credentials['is_active'] = true;
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            // Only valid credentials for an inactive account receive this
+            // explanation. Wrong passwords retain the generic failure text.
+            $message = Auth::validate($request->only('email', 'password'))
+                ? EnsureUserIsActive::DEACTIVATED_MESSAGE
+                : __('auth.failed');
+
             throw ValidationException::withMessages([
-                'email' => __('auth.failed'),
-            ]);
+                'email' => $message,
+            ])->redirectTo(route('login'));
         }
 
         $request->session()->regenerate();

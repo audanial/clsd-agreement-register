@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Http\Middleware\EnsureUserHasRole;
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -27,6 +28,14 @@ use Tests\TestCase;
 class LivewireRoleEnforcementTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_active_user_check_is_registered_in_the_web_group(): void
+    {
+        $this->assertContains(
+            EnsureUserIsActive::class,
+            app('router')->getMiddlewareGroups()['web'],
+        );
+    }
 
     public function test_non_admin_cannot_create_a_user_through_the_livewire_component(): void
     {
