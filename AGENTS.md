@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MOA/MOU/SEA/MOC/ADDENDUM) with partners, per campus. Laravel 13 + Livewire 4 + Tailwind CSS 4 + Vite, SQLite at `database/database.sqlite`. M1–M4 are complete: migrations, seeders, the agreement CRUD vertical slice, the pending-agreement global scope, and the M4/M5a QA handover artifacts are in place. `README.md` and `docs/HANDOVER.md` have been rewritten for the M5 handover.
+Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MOA/MOU/SEA/ADDENDUM) with partners, per campus, and includes the LP1 Legal Submission Portal. Laravel 13 + Livewire 4 + Tailwind CSS 4 + Vite, SQLite at `database/database.sqlite`. M1–M9, LP0, and LP1 are implemented. DEF-013 is implemented; release evidence belongs in `docs/handoff-*.md` and `docs/qa/`.
 
 ## Commands
 
@@ -94,7 +94,7 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
 ## LP0 — Legal Submission Portal foundation (10 Sep 2026) — implemented
 
 Groundwork only. No portal feature shipped: no `submissions` table, no uploads, no portal pages.
-The full architecture report and the LP1–LP6 roadmap live in the LP0 plan document.
+The LP0 plan document that was expected to contain the LP1–LP6 roadmap was never committed to this repository. Recover or reconstruct and approve that roadmap before planning LP2.
 
 - **Livewire role middleware is now persistent.** `AppServiceProvider` registers
   `EnsureUserHasRole` via `Livewire::addPersistentMiddleware()`. Livewire only re-runs an
@@ -134,12 +134,6 @@ The full architecture report and the LP1–LP6 roadmap live in the LP0 plan docu
   disturb the M5-8 boundary tests. Convert at display time only.
 
 ## Future considerations (not yet scoped/planned)
-
-- M5-2 user management: non-technical Legal staff cannot use `php artisan user:create` to add new
-  staff accounts (admin/legal/viewer). The M5 handover plan includes a simple admin-only "create user" web form
-  so Intan can manage staff accounts without a terminal. PICs are plain name strings (Decision 4c, implemented
-  in M6-4) and do not need user accounts. Until that form is built, the command remains the only path for
-  staff accounts and is documented in `README.md`. Raised 21 Aug 2026; updated 2 Sep 2026.
 
 - PIC self-service view: a future idea where PICs (external stakeholders) could log in and see only
   their own agreements. Explicitly not built in M6-4; requires a separate decision and scope. Logged 2 Sep 2026.

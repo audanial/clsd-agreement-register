@@ -1,8 +1,8 @@
 # CLSD Agreement Register
 
-Internal UniKL system for tracking legal agreements (LOI, NDA, MOA, MOU, SEA, MOC, ADDENDUM) with partners, per campus.
+Internal UniKL system for tracking legal agreements (LOI, NDA, MOA, MOU, SEA, ADDENDUM) with partners, per campus, plus the first version of the Legal Submission Portal.
 
-The register is used by Legal staff to record and monitor agreements, and by other UniKL staff to look them up. The single most important rule is: **agreements with `document_status = pending` are still in Legal vetting and are invisible to anyone who is not Legal or Admin.** This is enforced below every query, not in the UI layer.
+The register is used by Legal staff to record and monitor agreements, and by other UniKL staff to look them up. Requesting Staff can also submit new agreement requests and see only their own submissions. The single most important rule is: **agreements with `document_status = pending` are still in Legal vetting and are invisible to anyone who is not Legal or Admin.** This is enforced below every query, not in the UI layer.
 
 ---
 
@@ -83,10 +83,11 @@ Dev accounts seeded by `DatabaseSeeder`:
 | Role | Can do |
 |---|---|
 | **admin** | Everything, including creating and deactivating users. |
-| **legal** | Create, edit, and change the status of agreements. Sees `pending` agreements. Cannot manage users. |
-| **viewer** | Read only. Cannot see `pending` agreements or reach create/edit routes. |
+| **legal** | Create, edit, archive, and change the status of agreements; sees `pending` agreements; can view the shared submission queue, which is read-only in LP1. Cannot manage users. |
+| **viewer** | Register read-only. Cannot see `pending` agreements, reach register mutations, or access the submission portal. |
+| **requester** (shown as **Requesting Staff**) | Creates agreement submissions and sees only their own submissions. Has the same read-only Register access and pending-record restriction as a Viewer. |
 
-A **PIC** (project owner) is just a user, usually with the `viewer` role. They do **not** need to log in to appear in the agreement form's PIC dropdown; they only need an active user record.
+A **PIC** (project owner) is a plain name stored on an agreement, not a user account. Legal can select an existing PIC name or type a new one directly in the agreement form. A PIC does not need an account unless a separate access need exists.
 
 **Admin is granted on trust and system ownership, not on organisational rank.** Seniority is not, by itself, a reason to hold an admin account. The principle is recorded here so it survives any change of personnel.
 
@@ -100,7 +101,9 @@ Admin users can add and deactivate people from the web UI:
 2. Fill in **Name**, **Email**, **Role**, and an **Initial password**.
 3. Click **Create user**.
 
-The new user can then be selected as the PIC in the agreement form. Deactivating a user removes them from the PIC dropdown but keeps them visible on any agreement they were already assigned to.
+Choose **Requesting Staff** for non-Legal staff who need to submit requests, **Viewer** for Register-only access, and **Legal** for Legal staff who maintain agreements and can view the shared read-only submission queue. PIC names are managed independently in the agreement form.
+
+Deactivating an account revokes its existing web access on the next request and prevents an old Remember me cookie from restoring access. A correct-password login attempt explains that the account is deactivated; wrong passwords retain the generic error.
 
 An admin cannot deactivate their own account from the UI. If the only admin is unavailable, use the command line:
 
@@ -127,7 +130,7 @@ composer test
 This clears the config cache and runs PHPUnit. Because `laravel/pao` is installed, the output is compact JSON when an AI agent runs it:
 
 ```json
-{"tool":"phpunit","result":"passed","tests":117,"passed":117,...}
+{"tool":"phpunit","result":"passed","tests":356,"passed":356,...}
 ```
 
 Parse the `result` field. If it says `passed`, the suite is green. Human-run PHPUnit shows normal pretty output; the acceptance criterion is the same.
@@ -144,8 +147,8 @@ vendor\bin\pint
 
 - `app/Models/` — Eloquent models. `Agreement` carries the `HidePendingFromNonLegalScope` global scope, which is the core access rule.
 - `app/Actions/` — Small invokable classes shared by multiple entry points (e.g., activity logging).
-- `resources/views/components/⚡*.blade.php` — **Livewire 4 single-file components.** The filename starts with a literal `⚡` emoji. These are anonymous classes with the Blade template in the same file. `php artisan make:livewire Foo` creates `resources/views/components/⚡foo.blade.php`. Do not expect `app/Livewire/Foo.php`.
-- `resources/views/components/badges/` — Plain Blade anonymous components for status badges.
+- `resources/views/livewire/` — **Livewire 4 single-file components.** They use plain filenames with no emoji prefix. `php artisan make:livewire Foo` creates the correct single-file component because `config/livewire.php` disables emoji filenames.
+- `resources/views/components/` — Plain Blade anonymous components such as date displays, dropdowns, and status badges. Do not place Livewire components here.
 - `routes/web.php` — Routes grouped by middleware; Livewire full-page components are registered with `Route::livewire(...)`.
 - `database/migrations/` — Schema. The `2026_*` migrations contain comments that explain business rules; treat them as the design doc.
 - `database/seeders/` — Seeders. `CampusSeeder` and `CountrySeeder` are unguarded and run through `DatabaseSeeder`; `UserSeeder` and `StaffSeeder` are dev-only.
@@ -163,9 +166,12 @@ vendor\bin\pint
 | `docs/architecture-plan.md` | Approved architecture for M1 + M2. |
 | `docs/architecture-plan-m3.md` | Approved architecture for M3 (vertical slice). |
 | `docs/architecture-plan-m4.md` | Approved architecture for M4 (QA portfolio evidence). |
-| `docs/architecture-plan-m5.md` | Approved architecture for M5 (handover). |
+| `docs/architecture-plan-m5.md` through `docs/architecture-plan-m9.md` | Approved plans for handover and the completed post-deployment register improvements. |
+| `docs/architecture-plan-lp1.md` | Approved architecture and amendments for the Legal Submission Portal foundation. |
+| `docs/handoff-lp*.md` | Portal implementation and release handoffs. |
+| `docs/handoff-def-013.md` | Account-deactivation security release evidence. |
 | `docs/qa/` | Test plan, test cases, defect log, and traceability matrix. |
-| `docs/HANDOVER.md` | One-page note for the Legal system owner (Intan). Skeleton with headings; Amir writes the prose. |
+| `docs/HANDOVER.md` | Non-technical operating note for the Legal system owner (Intan). |
 
 ---
 
@@ -176,10 +182,11 @@ These are out of scope for the MVP, not oversights:
 - **File upload UI.** The `agreement_files` table exists, but there is no UI for attaching documents.
 - **Excel / CSV import or export.** Historical data will be entered by hand in M5 rather than imported from a spreadsheet nobody has reviewed.
 - **Dashboard analytics.** No charts, reports, or statistics screens.
-- **Archive / restore UX.** Archiving is a data state (`archived_at`); there is no dedicated archive workflow.
+- **Restore UX.** Legal can archive a terminated agreement, and the scheduled command archives expired agreements, but archived records cannot be restored through the web UI.
 - **Email / password reset flows.** Password resets are handled by the `user:password` artisan command.
 - **Approval workflow engine.** The workflow is tracked by nullable date columns on `agreements`.
-- **`spatie/laravel-permission`.** The three-role enum is sufficient.
+- **Portal document uploads and review actions.** LP1 accepts text submissions and gives Legal a read-only queue; uploads, comments, revision requests, status actions, notifications, and Register linking are later milestones.
+- **`spatie/laravel-permission`.** The four-role string model is sufficient for the current access rules.
 
 Known limitations that may bite users:
 

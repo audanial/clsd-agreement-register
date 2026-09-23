@@ -3,6 +3,7 @@
 > **Project:** Internal UniKL "CLSD Agreement Register"
 > **Stack:** Laravel 13 · Livewire 4 · Tailwind 4 · Vite · SQLite
 > **Repo state at plan time:** 2 commits — schema + seeders + partial models. No auth, no routes, no Livewire components, no real tests.
+> **Current status (23 Sep 2026):** M1–M9, LP0, and LP1 are implemented. The original-state inventory in Section 1 is retained as historical planning context, not as a description of the current repository. The current release baseline is 356 passing tests and 1,213 assertions.
 > **Team (agreed operating model):**
 > - **Amir** = Project Manager. Makes every call. Approves plans before any implementation.
 > - **Claude Code** = Lead Architect. Reads the codebase, verifies state, proposes architecture, flags decisions. Writes plans, **never implements without approval**.
@@ -56,7 +57,7 @@ This is a **work-hours project**. Build at the office. QA study evenings and job
 - [x] Relations, casts, global pending scope, archive/expiry scopes, `CountrySeeder`.
 
 ### M3 — Vertical slice: Register actually usable
-- [x] Livewire 4 **single-file** components (`php artisan make:livewire ...` → `⚡`-prefixed file):
+- [x] Livewire 4 **single-file** components in `resources/views/livewire/`, using plain filenames with no emoji prefix:
   - `AgreementsIndex` — list + search + filters + pagination; role-aware.
   - `AgreementForm` — create + edit.
   - `AgreementShow` — detail view + status change + activity feed.
@@ -69,21 +70,32 @@ This is a **work-hours project**. Build at the office. QA study evenings and job
 - [x] Role-visibility tests; create/update/status-change feature tests; factories; validation tests.
 - [x] `composer test` green at 115 tests.
 
-### M5 — Handover (in progress)
+### M5 — Handover (complete)
 - [x] README rewritten: setup, roles, user management, tests, out-of-scope items.
-- [x] `docs/HANDOVER.md` skeleton created for Intan; Amir writes the prose.
+- [x] `docs/HANDOVER.md` written as a non-technical operating note for Intan.
 - [x] M4/M5a QA artifact repair: defect log, traceability matrix, test cases; boundary tests E-5/E-6 added.
-- [ ] M5-2 admin-only user-creation web form — still open; documented as future work in `AGENTS.md` and `README.md`.
-- [ ] Excel import of 2022–2024 historical data — **only if explicitly requested**.
+- [x] M5-2 admin-only user-creation and account-deactivation web form.
+- Excel import remains deferred under Decision M5-1; historical data is entered manually unless a separately approved data-cleaning project is requested.
 
-### M6 — Post-deployment usability fixes (in progress)
+### M6 — Post-deployment usability fixes (complete)
 Split into three handoffs (schema-first order):
 - [x] M6b — PIC becomes a plain `pic_name` string (handoff-m6b-pic.md).
-- [ ] M6c — Merge `agreement_date` + `effective_date` into "Date Signed" and drop `effective_date` (handoff-m6c-date-merge.md). Local code done; production migration gated on confirmed backup.
-- [ ] M6a — UI-only fixes: list columns, duration format, partner-mode `wire:model.live`, date-format consistency (handoff-m6a-ui.md).
+- [x] M6c — Merge `agreement_date` + `effective_date` into "Date Signed" and drop `effective_date` after live-data verification and backup confirmation.
+- [x] M6a — UI-only fixes: list columns, duration format, partner-mode `wire:model.live`, and date-format consistency.
+
+### M7–M9 — UAT improvements (complete)
+- [x] M7 — Year filter, display labels, country/campus additions, and first-round Intan UAT improvements.
+- [x] M8 — Agreement-type cleanup, manual and scheduled archiving, and display polish.
+- [x] M9 — Reusable custom dropdowns, campus-code emphasis, and Campus / Department naming.
+
+### LP0–LP1 — Legal Submission Portal foundation (complete)
+- [x] LP0 — requester role, persistent Livewire role enforcement, private non-public documents disk, Livewire component relocation, and Malaysian-time audit display.
+- [x] LP1 — requester submission form and private queue, shared Legal/Admin queue, read-only detail and audit creation, plus Requesting Staff read-only Register access.
+- [x] DEF-014 — scoped re-resolution blocks stale Livewire snapshots after an agreement becomes pending.
+- [x] DEF-013 — account deactivation revokes active and remembered access; deployed 23 Sep 2026, with the authenticated production walkthrough still to record.
 
 ### 🚫 Explicitly OUT of MVP scope (phase-later, do not build now)
-File upload UI · dashboard analytics · archive/restore UX · notifications/reminders · CSV export · Excel import · approval workflow engine · spatie/laravel-permission.
+File upload UI · dashboard analytics · archive restoration UI · notifications/reminders · CSV export · Excel import · approval workflow engine · spatie/laravel-permission.
 
 ---
 
@@ -107,6 +119,8 @@ File upload UI · dashboard analytics · archive/restore UX · notifications/rem
 
 **Validation caution (Open Decision 3):** `expiry_date >= effective_date` is a tempting rule, but historical rows may violate it. Suggest soft warning over hard failure until Ms. Haniza confirms the data is clean.
 
+> **Historical note:** This original specification was superseded in part: PIC changed to `pic_name` in M6b; `effective_date` was dropped and `agreement_date` became Date Signed in M6c; and MOC was removed from application choices in M8-1. See `docs/architecture-plan-m6.md` and `docs/architecture-plan-m8.md`.
+
 ---
 
 ## 4. Open decisions — status as of M5a (27 Aug 2026)
@@ -118,12 +132,15 @@ All open decisions from the original plan are now closed or superseded.
 3. **Date validation strictness — ✅ DECIDED (Decision D3):** expiry earlier than effective date produces a soft warning, never blocks save.
 4. **PIC project-status edits / stale-status flag — ✅ DECIDED (Decision M5-8):** Legal updates project status on behalf; stale badge appears at 90 days, with the boundary crossed at the start of the day.
 5. **File uploads in MVP — ✅ DECIDED:** deferred; `agreement_files` table exists but has no UI.
+> **Historical note:** After this M5a snapshot, the admin-only user-management UI shipped in M5b; PIC became `pic_name` in M6b; `effective_date` was removed and `agreement_date` became Date Signed in M6c; and the Requesting Staff role and Legal Submission Portal were introduced through LP0–LP1.
 
 **Convention (agreed earlier with Kimi):** do NOT add `HasFactory` to a model until its factory actually exists. `Agreement`/`Partner` get `HasFactory` only in M4 alongside their factories — not before.
 
 ---
 
-## 5. Claude Code prompt — LEAD ARCHITECT briefing (copy the whole block below)
+## 5. Historical Claude Code prompt — archived
+
+The prompt below records how M1 and M2 were planned. **Do not copy it for current work:** it intentionally describes the pre-M1 repository and therefore contains superseded filenames, roles, and scope.
 
 Run Claude Code from the repo root on the **work PC** (or from this clone after `composer setup`). Paste this block:
 
