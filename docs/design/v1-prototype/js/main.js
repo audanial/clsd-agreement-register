@@ -601,7 +601,9 @@
     const live = el.getAttribute('data-live');
     const isText = el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !['radio', 'checkbox', 'date'].includes(el.type));
     if (e.type === 'input' && !isText) return; // selects/radios handled on change
-    if (e.type === 'change' && isText && live !== 'rerender') return;
+    // Text fields render on 'input'. Their 'change' repeats the same value and fires while render() is
+    // removing the focused field, so handling it would nest a second render inside the first.
+    if (e.type === 'change' && isText) return;
     if (path.startsWith('newForm.location') || path.startsWith('newForm.category')) UI.newForm.changed = A.requiredIntake(UI.newForm.category, UI.newForm.location).slice(-1)[0];
     if (live === 'rerender') rerender();
     else if (live === 'modal') rerender('modal');

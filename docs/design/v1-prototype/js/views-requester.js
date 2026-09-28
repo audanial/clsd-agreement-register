@@ -41,16 +41,16 @@
     const rows = all.filter(groups[f.tab]).filter((s) => !q || [s.id, s.title, s.partner, s.type].join(' ').toLowerCase().includes(q));
     const mine = all.filter(groups.mine);
 
-    const head = `<div class="page-head"><div style="flex:1"><h1>My Submissions</h1><p class="lede">Agreements you have submitted to CLSD Legal. Only you and CLSD Legal can see these records.</p></div>
+    const head = `<div class="page-head"><div style="flex:1"><h1>My Submissions</h1><p class="lede">Track your agreement submissions.</p></div>
       <a class="btn primary lg" href="#/new">${icon('plus')}New Submission</a></div>`;
 
     if (!all.length) {
-      return `<div class="page">${head}<div class="card empty">${icon('inbox')}<h3>No submissions yet</h3><p>Start a submission when you have the agreement and supporting documents ready. You'll see its progress and Legal's messages here.</p>
+      return `<div class="page">${head}<div class="card empty">${icon('inbox')}<h3>No submissions yet</h3><p>Select New Submission to get started.</p>
         <p style="margin-top:16px"><a class="btn primary" href="#/new">${icon('plus')}Start a new submission</a></p>
         ${UI.previewEmpty ? `<p class="xsmall faint" style="margin-top:18px">Demo preview of a first-time requester. <button class="link-btn" data-act="toggle-empty">Show Aisyah's submissions again</button></p>` : ''}</div></div>`;
     }
 
-    const attention = mine.length ? `<div class="notice warn" style="margin-bottom:16px">${icon('flag')}<div><strong>${mine.length} submission${mine.length === 1 ? ' needs' : 's need'} your action:</strong> ${mine.map((s) => `<a href="#/sub/${s.id}/overview">${esc(s.title)}</a> — ${esc(A.nextStepShort(s, false))}`).join('; ')}.</div></div>` : '';
+    const attention = mine.length ? `<div class="notice warn" style="margin-bottom:16px">${icon('flag')}<div><strong>${mine.length} submission${mine.length === 1 ? ' needs' : 's need'} your action.</strong></div></div>` : '';
 
     const table = rows.length ? `<div class="table-wrap"><table class="table"><thead><tr>
         <th>Submission</th><th>Type</th><th>Status</th><th>Next step</th><th><span class="sr-only">Unread</span>${icon('message')}</th><th>Last update</th></tr></thead><tbody>
@@ -64,7 +64,7 @@
           <td>${un ? `<span class="unread-dot" title="${un} unread message${un === 1 ? '' : 's'}">${un}</span>` : '<span class="faint">—</span>'}</td>
           <td class="nowrap">${A.fmt(s.updatedAt)}</td></tr>`;
       }).join('')}</tbody></table></div>`
-      : `<div class="empty">${icon('search')}<h3>No submissions match</h3><p>${f.tab === 'closed' ? 'You have no Not Proceeding submissions.' : 'Try another filter or clear the search.'}</p></div>`;
+      : `<div class="empty">${icon('search')}<h3>No matching submissions.</h3></div>`;
 
     return `<div class="page">${head}${attention}
       <div class="card">
@@ -78,7 +78,7 @@
         </div>
         ${table}
       </div>
-      <p class="xsmall faint" style="margin-top:10px">Unread counts are personal to you. <button class="link-btn" data-act="toggle-empty">Demo: preview the empty state</button></p>
+      <p class="xsmall faint" style="margin-top:10px"><button class="link-btn" data-act="toggle-empty">Demo: empty state</button></p>
     </div>`;
   };
 
