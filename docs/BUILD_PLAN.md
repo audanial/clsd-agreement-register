@@ -94,8 +94,21 @@ Split into three handoffs (schema-first order):
 - [x] DEF-014 — scoped re-resolution blocks stale Livewire snapshots after an agreement becomes pending.
 - [x] DEF-013 — account deactivation revokes active and remembered access; deployed 23 Sep 2026 and production-verified 28 Sep 2026.
 
-### 🚫 Explicitly OUT of MVP scope (phase-later, do not build now)
-File upload UI · dashboard analytics · archive restoration UI · notifications/reminders · CSV export · Excel import · approval workflow engine · spatie/laravel-permission.
+### LP2–LP6 — Approved V1 delivery roadmap
+
+- [ ] LP2 — Documents: dynamic checklists, secure private upload/download, controlled document slots, immutable version history, and representative-file UAT.
+- [ ] LP3 — Communication: shared Conversation, private Internal Legal Notes, per-user unread state, and who-acts-next indicators.
+- [ ] LP4 — Legal review: actionable shared queue, classification correction, clarification/revision requests, controlled transitions, expanded audit, and concurrency safeguards.
+- [ ] LP5 — Execution: UniKL and partner signing, conditional stamping, final verification, Fully Executed, Not Proceeding, and reopening.
+- [ ] LP6 — Registration and release: guided Register creation, Addendum relationships, requester/Viewer access realignment, full audit coverage, UAT, release evidence, and handover updates.
+
+Plan and approve these one milestone at a time. The workflow mockup was approved by Intan and Siti
+on 28 Sep 2026 with two amendments: production screens use substantially less explanatory text,
+and every newly created Register record requires a fixed expiry date. Existing historical null
+expiry dates remain valid legacy data.
+
+### 🚫 Explicitly OUT of approved V1 scope
+Dashboard analytics · archive restoration UI · notifications/reminders · CSV export · Excel import · electronic signature integration · direct LHDN integration · general approval workflow engine · spatie/laravel-permission.
 
 ---
 
@@ -111,7 +124,7 @@ File upload UI · dashboard analytics · archive restoration UI · notifications
 | `sector` | select | ❌ | `academic` / `industri` |
 | `agreement_date` | date | ❌ | Year is derived from this — no separate year field |
 | `effective_date` | date | ❌ | Nullable for historical imports |
-| `expiry_date` | date | ❌ | **Null = indefinite / until completion** — never treat as missing |
+| `expiry_date` | date | ❌ | Original MVP rule: null means indefinite / until completion. Superseded for newly created records by the approved 28 Sep 2026 V1 decision; see the historical note below. |
 | `document_status` | select | ✅ | Default `pending`; only admin/legal may move past it; viewer read-only |
 | `project_status` | select | ✅ | Default `not_started`; updating it also stamps `project_status_updated_at` (powers the "stale status" flag later) |
 | `scope` / `notes` | textarea | ❌ | Free text |
@@ -119,7 +132,7 @@ File upload UI · dashboard analytics · archive restoration UI · notifications
 
 **Validation caution (Open Decision 3):** `expiry_date >= effective_date` is a tempting rule, but historical rows may violate it. Suggest soft warning over hard failure until Ms. Haniza confirms the data is clean.
 
-> **Historical note:** This original specification was superseded in part: PIC changed to `pic_name` in M6b; `effective_date` was dropped and `agreement_date` became Date Signed in M6c; and MOC was removed from application choices in M8-1. See `docs/architecture-plan-m6.md` and `docs/architecture-plan-m8.md`.
+> **Historical note:** This original specification was superseded in part: PIC changed to `pic_name` in M6b; `effective_date` was dropped and `agreement_date` became Date Signed in M6c; MOC was removed from application choices in M8-1; and the approved V1 decision on 28 Sep 2026 requires a fixed expiry date for every newly created Register record while preserving existing historical nulls. See `docs/architecture-plan-m6.md`, `docs/architecture-plan-m8.md`, and `docs/design/unikl-agreement-management-v1-spec.md`.
 
 ---
 

@@ -39,7 +39,7 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
   and detail routes are gated `role:admin,legal,viewer,requester`; create/edit and every mutation
   remain Admin/Legal only. Requesters still see only their own submissions. This correction was
   approved 17 Sep 2026 in LP1 Amendment 2.
-- `agreements.expiry_date = null` means indefinite/until-completion, not missing data. Most date columns are nullable because historical imports lack them.
+- Existing `agreements.expiry_date = null` values mean indefinite/until-completion, not missing data, and remain supported for historical records. Following Intan and Siti's 28 Sep 2026 mockup review, every newly created Agreement Register record must provide a fixed expiry date in both manual and guided creation flows. Keep the database column nullable for legacy data; enforce the new rule at creation boundaries and do not offer a "No fixed expiry" control.
 - `php artisan db:seed` runs only `CampusSeeder` (idempotent `updateOrInsert`): 12 UniKL institutes + central units + `TBD`. `countries.is_domestic` drives the Dalam/Luar Negara display.
 
 ## Decisions & rationale (why, not just what)
@@ -79,6 +79,13 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
   rules take precedence, and future features depicted in the prototype must not be pulled into an
   earlier milestone. Never serve the prototype or import its bundled scripts/assets into the app.
 
+- **Approved V1 workflow reference:** `docs/design/v1-prototype/index.html` is the requirements-led
+  workflow artifact approved by Intan and Siti on 28 Sep 2026. The binding requirements remain in
+  `docs/design/unikl-agreement-management-v1-spec.md`. Two review amendments override the preserved
+  artifact: production screens use substantially less explanatory text, and all newly created
+  Register records require a fixed expiry date. The prototype's "No fixed expiry" checkbox must
+  not be implemented. Never serve or import the prototype assets into the application.
+
 - Optimize for convenience and usability by non-technical Legal staff over
   visual polish or impressive features. The system must remain operable
   by Legal (specifically Intan, the trusted successor as of 26 Aug 2026)
@@ -88,13 +95,17 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
   knowledge, it's a gap, not an acceptable tradeoff — see M5-2 (user
   management form) as the first concrete example of this principle in
   practice.
+- Keep production copy concise and action-led. Prioritize current status, who acts next, and the
+  next action; avoid repeated explanations and place necessary detail in contextual help.
 - Ms. Haniza departed Legal 26 Aug 2026; Intan (Legal Executive) is the
   confirmed handover contact and system owner going forward.
 
 ## LP0 — Legal Submission Portal foundation (10 Sep 2026) — implemented
 
-Groundwork only. No portal feature shipped: no `submissions` table, no uploads, no portal pages.
-The LP0 plan document that was expected to contain the LP1–LP6 roadmap was never committed to this repository. Recover or reconstruct and approve that roadmap before planning LP2.
+Groundwork only. No portal feature shipped at LP0: no `submissions` table, no uploads, no portal
+pages. The missing V1 roadmap has since been reconstructed and approved in
+`docs/design/unikl-agreement-management-v1-spec.md`; plan LP2–LP6 one milestone at a time from that
+specification rather than designing the entire implementation up front.
 
 - **Livewire role middleware is now persistent.** `AppServiceProvider` registers
   `EnsureUserHasRole` via `Livewire::addPersistentMiddleware()`. Livewire only re-runs an

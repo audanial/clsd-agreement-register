@@ -1,6 +1,6 @@
 # UniKL Agreement Management System V1 Design
 
-> **Status:** Approved in conversation by Amir on 25 September 2026; written specification pending repository review.
+> **Status:** Approved by Amir on 25 September 2026; workflow mockup approved by Intan and Siti on 28 September 2026 with the review amendments recorded below.
 > **Product name:** UniKL Agreement Management System
 > **Modules:** Submission Portal and Agreement Register
 > **Department:** Corporate Legal & Secretariat Department (CLSD)
@@ -12,7 +12,9 @@ V1 extends the implemented LP1 Submission Portal into a complete, traceable agre
 
 The system manages agreements rather than every activity of the Legal department. The product name is therefore **UniKL Agreement Management System**, not UniKL Legal Management System. The interface may describe it as managed by CLSD.
 
-V1 succeeds when Intan can operate the complete workflow without technical assistance, Requesting Staff always know what to do next, and Intan and Siti can validate the complete journey from the approved mockup before implementation continues.
+V1 succeeds when Intan can operate the complete workflow without technical assistance and Requesting Staff always know what to do next. Intan and Siti validated the complete journey in the workflow mockup on 28 September 2026, clearing the review gate before LP2 planning.
+
+Production screens must use concise, action-led copy. Show the current state, the next responsible person, and the next action first. Avoid repeating the same explanation in several places; move supporting detail into contextual or expandable help when it is still necessary. The mockup demonstrates the workflow and information hierarchy, but its full explanatory wording is not production copy.
 
 ## 2. Current system and changed access direction
 
@@ -247,6 +249,8 @@ The digital final package is sufficient for Fully Executed. Physical printing, c
 
 Fully Executed does not create an Agreement record automatically. Legal selects **Create Register Record** and receives a guided form pre-filled with known submission data. Legal reviews, corrects, and completes the official fields before confirming.
 
+Every newly created Agreement Register record requires a fixed expiry date. This applies both to the existing manual Legal/Admin creation flow and to the guided LP6 flow. Do not offer a **No fixed expiry** or indefinite checkbox. An expiry date that is already past remains valid historical information and does not block creation; the normal expiry and archive rules apply. Existing historical Agreement records whose `expiry_date` is null remain unchanged and continue to display as indefinite/until completion. The database column remains nullable for those legacy records, so this rule is enforced at new-record creation boundaries rather than through a destructive schema rewrite.
+
 The operation:
 
 - creates the new Agreement as Signed/Fully Executed;
@@ -323,6 +327,8 @@ The requirements-led Claude mockup contains exactly twelve views.
 
 The mockup uses the existing institutional palette and information hierarchy but does not copy speculative features from the older prototype. It is desktop-first, uses fictional data, demonstrates important state and error variations, and serves as a workflow-validation artifact rather than an implementation specification or production asset.
 
+Intan and Siti approved the workflow on 28 September 2026 with two amendments: production screens must substantially reduce explanatory wording, and every newly created Register record must require a fixed expiry date. The preserved review artifact still shows a **No fixed expiry** checkbox in the guided Register view; that control is superseded by this specification and must not be implemented.
+
 ## 16. Delivery roadmap
 
 ### LP2 — Documents
@@ -382,4 +388,4 @@ Automated verification must cover:
 - historical LOI and legacy-status preservation; and
 - continued inactive-account enforcement.
 
-Manual browser verification must cover complete Requesting Staff, Legal, and Admin journeys with fictional data. Intan and Siti review the approved mockup before LP2 implementation planning, and Intan completes workflow-focused UAT before V1 release.
+Manual browser verification must cover complete Requesting Staff, Legal, and Admin journeys with fictional data. Intan and Siti completed the pre-LP2 mockup review on 28 September 2026. Intan completes workflow-focused UAT before V1 release.
