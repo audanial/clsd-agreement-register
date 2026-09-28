@@ -141,7 +141,10 @@ new class extends Component
             'pic_name' => ['nullable', 'required_if:picMode,new', 'string', 'max:255'],
             'sector' => ['nullable', 'in:academic,industri'],
             'agreement_date' => ['nullable', 'date'],
-            'expiry_date' => ['nullable', 'date'],
+            'expiry_date' => [
+                ! $this->agreement || $this->agreement->expiry_date !== null ? 'required' : 'nullable',
+                'date',
+            ],
             'document_status' => ['required', 'in:pending,awaiting_partner,signed'],
             'project_status' => ['required', 'in:not_started,ongoing,stalled,completed'],
             'scope' => ['nullable', 'string'],
@@ -416,7 +419,7 @@ new class extends Component
             </div>
 
             <div>
-                <label class="block text-sm font-medium">Expiry date (DD/MM/YYYY)</label>
+                <label class="block text-sm font-medium">Expiry Date{{ ! $agreement || $agreement->expiry_date !== null ? ' *' : '' }} (DD/MM/YYYY)</label>
                 <input wire:model="expiry_date" type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                 @error('expiry_date') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 <p class="mt-1 text-sm text-gray-500">

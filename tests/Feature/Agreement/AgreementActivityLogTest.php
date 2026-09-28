@@ -35,6 +35,7 @@ class AgreementActivityLogTest extends TestCase
             ->set('partnerMode', 'existing')
             ->set('partner_id', $partner->id)
             ->set('campus_id', $campus->id)
+            ->set('expiry_date', '2029-12-31')
             ->set('document_status', 'pending')
             ->set('project_status', 'not_started')
             ->call('save')

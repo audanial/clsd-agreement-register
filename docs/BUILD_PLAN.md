@@ -107,6 +107,14 @@ on 28 Sep 2026 with two amendments: production screens use substantially less ex
 and every newly created Register record requires a fixed expiry date. Existing historical null
 expiry dates remain valid legacy data.
 
+### V1 mockup review correction — fixed expiry (complete locally)
+
+- [x] Manual Register creation requires an expiry date and labels it **Expiry Date**.
+- [x] Existing dated records cannot have their expiry cleared.
+- [x] Legacy records already missing an expiry remain editable and retain their historical meaning.
+- [x] Past expiry dates remain valid historical input and continue through the normal archive rules.
+- [ ] Apply the same requirement to LP6 guided Register creation when that flow is implemented.
+
 ### 🚫 Explicitly OUT of approved V1 scope
 Dashboard analytics · archive restoration UI · notifications/reminders · CSV export · Excel import · electronic signature integration · direct LHDN integration · general approval workflow engine · spatie/laravel-permission.
 

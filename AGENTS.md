@@ -39,7 +39,7 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
   and detail routes are gated `role:admin,legal,viewer,requester`; create/edit and every mutation
   remain Admin/Legal only. Requesters still see only their own submissions. This correction was
   approved 17 Sep 2026 in LP1 Amendment 2.
-- Existing `agreements.expiry_date = null` values mean indefinite/until-completion, not missing data, and remain supported for historical records. Following Intan and Siti's 28 Sep 2026 mockup review, every newly created Agreement Register record must provide a fixed expiry date in both manual and guided creation flows. Keep the database column nullable for legacy data; enforce the new rule at creation boundaries and do not offer a "No fixed expiry" control.
+- Existing `agreements.expiry_date = null` values mean indefinite/until-completion, not missing data, and remain supported for historical records. Following Intan and Siti's 28 Sep 2026 mockup review, every newly created Agreement Register record must provide a fixed expiry date in both manual and guided creation flows. Keep the database column nullable for legacy data; enforce the new rule at creation boundaries and do not offer a "No fixed expiry" control. The manual Agreement form now enforces this: new records require expiry, a dated record cannot be cleared, and a legacy-null record remains editable. LP6 must apply the same rule to guided registration.
 - `php artisan db:seed` runs only `CampusSeeder` (idempotent `updateOrInsert`): 12 UniKL institutes + central units + `TBD`. `countries.is_domestic` drives the Dalam/Luar Negara display.
 
 ## Decisions & rationale (why, not just what)

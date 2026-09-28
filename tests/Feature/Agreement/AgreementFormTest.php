@@ -37,6 +37,7 @@ class AgreementFormTest extends TestCase
             ->set('partnerMode', 'existing')
             ->set('partner_id', $partner->id)
             ->set('campus_id', $campus->id)
+            ->set('expiry_date', '2029-12-31')
             ->set('document_status', 'pending')
             ->set('project_status', 'not_started')
             ->call('save')
@@ -62,6 +63,7 @@ class AgreementFormTest extends TestCase
             ->set('partnerMode', 'existing')
             ->set('partner_id', $partner->id)
             ->set('campus_id', $campus->id)
+            ->set('expiry_date', '2029-12-31')
             ->set('document_status', 'signed')
             ->set('project_status', 'ongoing')
             ->call('save')
@@ -78,7 +80,7 @@ class AgreementFormTest extends TestCase
             ->set('document_status', '')
             ->set('project_status', '')
             ->call('save')
-            ->assertHasErrors(['title', 'type', 'campus_id', 'document_status', 'project_status']);
+            ->assertHasErrors(['title', 'type', 'campus_id', 'expiry_date', 'document_status', 'project_status']);
     }
 
     public function test_type_must_be_one_of_the_allowed_values(): void
@@ -168,6 +170,33 @@ class AgreementFormTest extends TestCase
         $this->assertDatabaseHas('agreements', ['title' => 'Date Test']);
     }
 
+    public function test_a_new_agreement_with_a_past_expiry_date_can_be_created(): void
+    {
+        $partner = Partner::factory()->create();
+        $campus = Campus::active()->first();
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form')
+            ->set('title', 'Historical Expired Agreement')
+            ->set('type', 'MOU')
+            ->set('partnerMode', 'existing')
+            ->set('partner_id', $partner->id)
+            ->set('campus_id', $campus->id)
+            ->set('agreement_date', '2020-01-01')
+            ->set('expiry_date', '2021-01-01')
+            ->set('document_status', 'signed')
+            ->set('project_status', 'completed')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('agreements', [
+            'title' => 'Historical Expired Agreement',
+            'expiry_date' => '2021-01-01 00:00:00',
+        ]);
+    }
+
     public function test_no_warning_when_only_one_date_is_present(): void
     {
         $partner = Partner::factory()->create();
@@ -186,7 +215,7 @@ class AgreementFormTest extends TestCase
             ->set('project_status', 'not_started')
             ->assertSet('dateWarning', null)
             ->call('save')
-            ->assertRedirect();
+            ->assertHasErrors(['expiry_date' => 'required']);
     }
 
     public function test_editing_an_agreement_hydrates_date_signed_from_agreement_date(): void
@@ -199,7 +228,7 @@ class AgreementFormTest extends TestCase
             ->assertSet('agreement_date', '2024-08-12');
     }
 
-    public function test_empty_expiry_date_persists_as_null(): void
+    public function test_new_agreement_requires_an_expiry_date(): void
     {
         $partner = Partner::factory()->create();
         $campus = Campus::active()->first();
@@ -216,11 +245,55 @@ class AgreementFormTest extends TestCase
             ->set('document_status', 'pending')
             ->set('project_status', 'not_started')
             ->call('save')
+            ->assertHasErrors(['expiry_date' => 'required']);
+
+        $this->assertDatabaseMissing('agreements', [
+            'title' => 'Indefinite Agreement',
+        ]);
+    }
+
+    public function test_an_existing_expiry_date_cannot_be_cleared(): void
+    {
+        $agreement = Agreement::factory()->create(['expiry_date' => '2029-12-31']);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form', ['agreement' => $agreement])
+            ->set('expiry_date', '')
+            ->call('save')
+            ->assertHasErrors(['expiry_date' => 'required']);
+
+        $this->assertDatabaseHas('agreements', [
+            'id' => $agreement->id,
+            'expiry_date' => '2029-12-31 00:00:00',
+        ]);
+    }
+
+    public function test_new_agreement_form_marks_expiry_date_as_required_without_an_indefinite_option(): void
+    {
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form')
+            ->assertSee('Expiry Date * (DD/MM/YYYY)')
+            ->assertDontSee('No fixed expiry');
+    }
+
+    public function test_a_legacy_agreement_without_expiry_date_remains_editable(): void
+    {
+        $agreement = Agreement::factory()->create(['expiry_date' => null]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreement-form', ['agreement' => $agreement])
+            ->set('notes', 'Historical record checked')
+            ->call('save')
+            ->assertHasNoErrors()
             ->assertRedirect();
 
         $this->assertDatabaseHas('agreements', [
-            'title' => 'Indefinite Agreement',
+            'id' => $agreement->id,
             'expiry_date' => null,
+            'notes' => 'Historical record checked',
         ]);
     }
 
@@ -237,6 +310,7 @@ class AgreementFormTest extends TestCase
             ->set('partnerMode', 'existing')
             ->set('partner_id', $partner->id)
             ->set('campus_id', $campus->id)
+            ->set('expiry_date', '2029-12-31')
             ->set('document_status', 'pending')
             ->set('project_status', 'ongoing')
             ->call('save')
@@ -280,6 +354,7 @@ class AgreementFormTest extends TestCase
             ->set('newPartnerShortName', 'NewCo')
             ->set('newPartnerCountry', 'international')
             ->set('campus_id', $campus->id)
+            ->set('expiry_date', '2029-12-31')
             ->set('document_status', 'pending')
             ->set('project_status', 'not_started')
             ->call('save')
@@ -338,6 +413,7 @@ class AgreementFormTest extends TestCase
             ->set('partnerMode', 'new')
             ->set('newPartnerName', 'Teknologi MARA')
             ->set('campus_id', $campus->id)
+            ->set('expiry_date', '2029-12-31')
             ->set('document_status', 'pending')
             ->set('project_status', 'not_started')
             ->call('save')
@@ -525,6 +601,7 @@ class AgreementFormTest extends TestCase
             ->assertSet('campus_id', $campus->id)
             ->set('title', 'Dropdown Campus')
             ->set('type', 'MOU')
+            ->set('expiry_date', '2029-12-31')
             ->set('document_status', 'pending')
             ->set('project_status', 'not_started')
             ->call('save')
@@ -550,6 +627,7 @@ class AgreementFormTest extends TestCase
             ->set('title', 'Dropdown Partner Test')
             ->set('type', 'MOU')
             ->set('campus_id', $campus->id)
+            ->set('expiry_date', '2029-12-31')
             ->set('document_status', 'pending')
             ->set('project_status', 'not_started')
             ->call('save')
@@ -578,6 +656,7 @@ class AgreementFormTest extends TestCase
             ->set('title', 'Dropdown PIC Test')
             ->set('type', 'MOU')
             ->set('campus_id', $campus->id)
+            ->set('expiry_date', '2029-12-31')
             ->set('document_status', 'pending')
             ->set('project_status', 'not_started')
             ->call('save')
@@ -606,6 +685,7 @@ class AgreementFormTest extends TestCase
             ->set('title', 'No Pic Test')
             ->set('type', 'MOU')
             ->set('campus_id', $campus->id)
+            ->set('expiry_date', '2029-12-31')
             ->set('document_status', 'pending')
             ->set('project_status', 'not_started')
             ->call('save')

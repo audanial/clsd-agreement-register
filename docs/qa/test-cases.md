@@ -269,6 +269,41 @@ The target is signed out; a later correct-password login attempt gives the CLSD 
 
 ---
 
+### TC-094 — New Register records require a fixed expiry date
+
+| | |
+|---|---|
+| **Feature area** | Agreement Creation & Validation |
+| **Business rule** | BR-54 — New records require expiry while historical nulls remain supported |
+| **Priority** | High |
+| **Type** | Automated |
+| **Preconditions** | A Legal or Admin user can create and edit Agreement Register records |
+
+**Steps**
+1. Attempt to create a new agreement without an expiry date.
+2. Render the new-agreement form and inspect its expiry label and options.
+3. Attempt to clear the expiry from an existing dated agreement.
+4. Edit an ordinary field on a historical agreement whose expiry is already null.
+5. Create a historical agreement with a fixed expiry date in the past.
+
+**Expected result**
+- New creation is rejected until Expiry Date is supplied.
+- The label remains **Expiry Date**, is marked required, and offers no indefinite checkbox.
+- An existing fixed expiry cannot be cleared.
+- A legacy null remains editable without inventing a date.
+- A past fixed expiry date is accepted and remains subject to the normal archive rules.
+
+**Automated by**
+- `AgreementFormTest::test_new_agreement_requires_an_expiry_date`
+- `AgreementFormTest::test_an_existing_expiry_date_cannot_be_cleared`
+- `AgreementFormTest::test_new_agreement_form_marks_expiry_date_as_required_without_an_indefinite_option`
+- `AgreementFormTest::test_a_legacy_agreement_without_expiry_date_remains_editable`
+- `AgreementFormTest::test_a_new_agreement_with_a_past_expiry_date_can_be_created`
+
+**Status** Pass locally (28 Sep 2026); release verification pending
+
+---
+
 ## 2. Roles & Authorization
 
 ### TC-007 — Role middleware enforces admin-only routes
@@ -814,26 +849,27 @@ Date columns cast to `Carbon`; datetime columns include time; `archived_at` is n
 
 ---
 
-### TC-028 — Null expiry date stays null and means indefinite
+### TC-028 — A legacy null expiry date stays null and means indefinite
 
 | | |
 |---|---|
 | **Feature area** | Dates & Expiry Semantics |
-| **Business rule** | BR-05 — `expiry_date = null` means indefinite |
+| **Business rule** | BR-05 — A historical `expiry_date = null` means indefinite |
 | **Priority** | High |
 | **Type** | Automated |
 | **Preconditions** | A legal user is logged in |
 
 **Steps**
-1. Create an agreement with `expiry_date` left empty.
-2. Inspect the saved row and the detail page.
+1. Create a historical record directly with `expiry_date = null`.
+2. Edit another ordinary field through the Agreement form without inventing an expiry date.
+3. Inspect the saved row and the detail page.
 
 **Expected result**
 Database stores `NULL`; detail page shows "Indefinite", not a blank or default date.
 
 **Automated by**
 `AgreementCastsTest::test_null_expiry_date_stays_null_and_is_indefinite`  
-`AgreementFormTest::test_empty_expiry_date_persists_as_null`  
+`AgreementFormTest::test_a_legacy_agreement_without_expiry_date_remains_editable`
 `AgreementShowTest::test_indefinite_expiry_renders_as_indefinite_not_blank`
 
 **Status** Pass (24 Aug 2026)
