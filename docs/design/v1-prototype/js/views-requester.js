@@ -143,8 +143,8 @@
       </div>
       <div class="card-foot stack-sm">
         <button class="btn primary lg" style="width:100%" data-act="new-submit" ${missing.length ? 'aria-disabled="true"' : ''}>${icon('arrow')}Submit to CLSD Legal</button>
-        <p class="xsmall muted">${missing.length ? `Official submission unlocks when all ${missing.length} missing item${missing.length === 1 ? ' is' : 's are'} supplied.` : 'After you submit, your documents lock while Legal reviews them.'}</p>
-        <p class="xsmall faint">Drafts are not saved. Leaving this page discards the form.</p>
+        <p class="xsmall muted">${missing.length ? 'Complete the missing items to submit.' : 'Documents lock during Legal review.'}</p>
+        <p class="xsmall faint">Leaving this page discards the form.</p>
       </div>`;
   };
 
@@ -190,7 +190,7 @@
     const req = A.requiredIntake(f.category, f.location);
     const keepOther = f.category === 'Industry' && ((f.location === 'International' && f.files.ssm) || (f.location === 'Local' && f.files.business_reg));
     const checklistItems = !f.category
-      ? `<div class="empty" style="padding:28px">${icon('file')}<h3>Choose an engagement category</h3><p>The required documents depend on whether this is an Academic or Industry engagement.</p></div>`
+      ? `<div class="empty" style="padding:28px">${icon('file')}<p>Choose Academic or Industry to see the required documents.</p></div>`
       : `<div class="checklist">${req.map((k, i) => clItem(f, k, i + 1)).join('')}
           ${f.category === 'Industry' && !f.location ? `<div class="cl-item missing-highlight"><span class="cl-num">6</span><div><div class="strong">Company-registration document</div><div class="small muted">Choose Local or International above. Local partners need SSM / Malaysian corporate information; International partners need an equivalent business-registration document.</div></div><span></span></div>` : ''}
         </div>
@@ -198,7 +198,7 @@
 
     return `<div class="page">
       <div class="crumbs"><a href="#/my">My Submissions</a> / New Submission</div>
-      <div class="page-head"><div style="flex:1"><h1>New Submission</h1><p class="lede">Send an agreement to CLSD Legal for review. Every required document must be attached before you can submit.</p></div></div>
+      <div class="page-head"><div style="flex:1"><h1>New Submission</h1><p class="lede">Submit an agreement for Legal review.</p></div></div>
       <div class="grid-form">
         <div>
           <div class="card">
@@ -221,7 +221,7 @@
                 ${seg('location', [{ v: 'Local', l: 'Local', s: 'Malaysia' }, { v: 'International', l: 'International', s: 'Outside Malaysia' }], f.location, 'newForm.location')}${fieldErr(f, 'location', checks)}</fieldset>
               <fieldset class="field ${invalid(f, 'type', checks)}"><legend>Agreement type <span class="req">*</span></legend>
                 ${seg('type', [{ v: 'NDA', l: 'NDA' }, { v: 'MOA', l: 'MOA' }, { v: 'MOU', l: 'MOU' }, { v: 'ADDENDUM', l: 'ADDENDUM' }], f.type, 'newForm.type')}
-                <div class="hint">LOI is no longer used for new submissions. Student Exchange (SEA), Research Collaboration and Erasmus+ are MOA arrangements — choose MOA and describe the arrangement.</div>${fieldErr(f, 'type', checks)}</fieldset>
+                <div class="hint">LOI is not available. For SEA, Research Collaboration or Erasmus+, choose MOA and enter the arrangement below.</div>${fieldErr(f, 'type', checks)}</fieldset>
               ${f.type === 'MOA' ? `<label class="field"><span class="label">MOA subtype / arrangement <span class="faint">(optional)</span></span><input class="input" data-bind="newForm.moaSubtype" value="${esc(f.moaSubtype)}" placeholder="e.g. Student Exchange Agreement, Research Collaboration, Erasmus+"><div class="hint">Free text. The Register type stays MOA.</div></label>` : ''}
             </div>
           </div>
@@ -229,7 +229,7 @@
 
           <div class="card" style="margin-top:16px" id="checklist-card">
             <div class="card-head"><h2 style="flex:1">3. Required documents</h2>${f.category ? `<span class="chip">${esc(f.category)} checklist · ${req.length || 6} required</span>` : ''}${A.pcCue()}</div>
-            <div class="notice neutral" style="margin:14px 16px 4px;border-radius:6px">${icon('info')}<div><strong>PDF or Word (.docx), up to 20 MB each.</strong> Images, ZIP files, macro-enabled Word files and executables are not accepted. <span class="muted">Prototype: uploads use fictional sample files — never upload real agreements here.</span></div></div>
+            <div class="notice neutral" style="margin:14px 16px 4px;border-radius:6px">${icon('info')}<div><strong>PDF or DOCX, up to 20 MB each.</strong> Use fictional files only in this prototype.</div></div>
             ${checklistItems}
           </div>
         </div>
@@ -249,7 +249,7 @@
       <span class="cl-num">${file ? icon('check') : n}</span>
       <div><div class="strong">${esc(d.label)} <span class="req" style="color:var(--maroon)">*</span></div><div class="small muted">${esc(d.help)}</div>
         ${file ? `<div class="file" style="margin-top:8px">${A.fileIco(file.filename.split('.').pop())}<div><div class="file-name">${esc(file.filename)}</div><div class="file-meta">${A.size(file.sizeMB)} · Ready to submit</div></div></div>`
-          : `<div class="small" style="margin-top:6px;color:${showMissing ? 'var(--red)' : 'var(--amber)'}">${icon('alert')} Missing — attach this document</div>`}
+          : showMissing ? `<div class="small" style="margin-top:6px;color:var(--red)">${icon('alert')} Required</div>` : ''}
         ${err ? `<div class="notice error" style="margin-top:8px">${icon('alert')}<div><strong>Upload failed.</strong> ${esc(err)} ${file ? 'Your current file is unchanged.' : ''} <button class="link-btn" data-act="upload-new" data-key="${k}">Try again</button></div></div>` : ''}
       </div>
       <div class="row">${file ? `<button class="btn sm" data-act="upload-new" data-key="${k}">${icon('upload')}Replace</button><button class="btn sm ghost" data-act="remove-new-file" data-key="${k}" aria-label="Remove ${esc(d.label)}">Remove</button>`
