@@ -1,7 +1,7 @@
 # V1 mockup review correction — fixed expiry
 
 > **Date:** 28 Sep 2026
-> **Status:** Implemented and verified locally; commit, deployment, and production walkthrough pending.
+> **Status:** Complete — implemented, deployed, and verified in production.
 > **Source:** Intan and Siti's V1 workflow-mockup review, confirmed by Amir.
 
 ## Decision
@@ -42,10 +42,13 @@ This is a creation rule, not a destructive historical-data rewrite:
 - Full suite: **360 tests, 1,231 assertions passed**.
 - Pint on every changed PHP and Blade file: **passed**.
 
-## Release check
+## Production release evidence
 
-After deployment, Amir should open the Create Agreement form with fictional values, leave Expiry
-Date empty, confirm that submission is blocked, and then cancel without creating a record. If a
-dedicated production test agreement already exists, use it to confirm that a dated record cannot
-have its Expiry Date cleared. Otherwise, do not create permanent test data or change real
-historical data; the automated tests cover past-date acceptance and the edit paths.
+- Commit `e61dbbc` (`Require expiry date for new agreements`) deployed successfully to the Laravel
+  Cloud production environment on 28 Sep 2026.
+- Amir opened the production Create Agreement form, completed the other required fields with
+  fictional values, and left **Expiry Date** empty.
+- Submission was blocked with the message **The expiry date field is required.**
+- Amir returned to the Register without creating a test record.
+- No real historical data was changed. Automated coverage verifies past-date acceptance and the
+  edit paths without adding permanent production test data.
