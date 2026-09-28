@@ -92,7 +92,7 @@ Split into three handoffs (schema-first order):
 - [x] LP0 — requester role, persistent Livewire role enforcement, private non-public documents disk, Livewire component relocation, and Malaysian-time audit display.
 - [x] LP1 — requester submission form and private queue, shared Legal/Admin queue, read-only detail and audit creation, plus Requesting Staff read-only Register access.
 - [x] DEF-014 — scoped re-resolution blocks stale Livewire snapshots after an agreement becomes pending.
-- [x] DEF-013 — account deactivation revokes active and remembered access; deployed 23 Sep 2026, with the authenticated production walkthrough still to record.
+- [x] DEF-013 — account deactivation revokes active and remembered access; deployed 23 Sep 2026 and production-verified 28 Sep 2026.
 
 ### 🚫 Explicitly OUT of MVP scope (phase-later, do not build now)
 File upload UI · dashboard analytics · archive restoration UI · notifications/reminders · CSV export · Excel import · approval workflow engine · spatie/laravel-permission.

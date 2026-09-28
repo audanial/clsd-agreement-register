@@ -477,7 +477,7 @@ Registered `EnsureUserHasRole` as Livewire persistent middleware and added `abor
 | **Component** | `app/Http/Controllers/Auth/AuthenticatedSessionController.php`, `app/Http/Middleware/EnsureUserHasRole.php`, authentication middleware, remember-me login |
 | **Severity** | Major |
 | **Priority** | High |
-| **Status** | Fixed locally — independent review and production verification pending |
+| **Status** | Closed — deployed and production-verified 28 Sep 2026 |
 
 **Description**
 Deactivating an account (`users.is_active = false`) prevents that user from logging in again, but it does not end access they already have. The `is_active` flag is checked only when credentials are submitted at login. A user who is signed in when an admin deactivates them may keep using the application, including the Agreement Register and, once LP1-B routes exist, the Legal Submission Portal.
@@ -511,7 +511,9 @@ The notice has two delivery paths. An inactive session that survives deactivatio
 **Verification**
 On 21 Sep 2026, `composer test` passed with **355 tests and 1,207 assertions**; Pint passed. `InactiveUserAccessTest` covers a surviving session on a page request, a real HTTP Livewire update with an active-user control, rotated and unrotated remember tokens with fresh-browser controls, and guest access. `UserManagementTest` covers token rotation, session purging, and reactivation; `LoginTest` covers correct and wrong passwords for inactive users. The three `PortalAccessTest` expectations affected by the new login redirect were updated and passed.
 
-An isolated local SQLite browser check on 21 Sep 2026 confirmed that an out-of-band inactive account is redirected with the notice on a page reload, that a Livewire filter update navigates to a visibly marked login page without an error overlay, and that the deactivation action removes access while a later correct-password attempt explains why. The action was invoked against a fictional local account; a two-browser Admin UI walkthrough and a fresh-browser remember-cookie walkthrough remain for Amir's release check. Claude Code's independent diff review and production verification are also pending. See `docs/handoff-def-013.md`.
+An isolated local SQLite browser check on 21 Sep 2026 confirmed that an out-of-band inactive account is redirected with the notice on a page reload, that a Livewire filter update navigates to a visibly marked login page without an error overlay, and that the deactivation action removes access while a later correct-password attempt explains why.
+
+Claude Code completed the independent diff review on 22 Sep 2026. On 28 Sep 2026, Amir completed the authenticated two-browser production walkthrough on Laravel Cloud using the dedicated requester test account. Admin deactivation rejected both the next Register page request and an already-open page's Livewire search update; the old Remember me login could not restore access; correct credentials showed the CLSD Legal explanation; a wrong password remained generic; and reactivation restored normal access. No Livewire error overlay appeared. The test account was returned to its original inactive state. The page-request redirect displayed the same notice twice as a cosmetic issue; it did not expose protected content or weaken access control. See `docs/handoff-def-013.md`.
 
 ---
 

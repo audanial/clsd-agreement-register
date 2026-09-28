@@ -57,7 +57,7 @@ Active user logs in. Inactive user is rejected; with the correct password, the e
 `LoginTest::test_user_can_login_with_valid_credentials`  
 `LoginTest::test_inactive_user_cannot_login`
 
-**Status** Pass (21 Sep 2026 DEF-013 update; release verification pending)
+**Status** Pass (automated 21 Sep 2026; production-verified 28 Sep 2026)
 
 ---
 
@@ -83,7 +83,7 @@ All three attempts return the same generic single-field error message; no indica
 - `LoginTest::test_login_error_does_not_reveal_whether_the_email_exists`
 - `LoginTest::test_inactive_user_with_wrong_password_gets_the_generic_error`
 
-**Status** Pass (21 Sep 2026 DEF-013 update; release verification pending)
+**Status** Pass (automated 21 Sep 2026; production-verified 28 Sep 2026)
 
 ---
 
@@ -182,7 +182,7 @@ The user is logged out, redirected to `/login`, and shown the CLSD Legal deactiv
 - `InactiveUserAccessTest::test_an_existing_session_is_rejected_after_out_of_band_deactivation`
 - `InactiveUserAccessTest::test_guest_can_open_login_without_a_redirect_loop`
 
-**Status** Pass (automated and isolated local browser, 21 Sep 2026); release verification pending
+**Status** Pass (automated and isolated local browser 21 Sep 2026; production-verified 28 Sep 2026)
 
 ---
 
@@ -207,7 +207,7 @@ The update does not render protected data. The browser navigates to `/login?deac
 - `InactiveUserAccessTest::test_a_real_livewire_update_is_rejected_after_out_of_band_deactivation`
 - `LivewireRoleEnforcementTest::test_active_user_check_is_registered_in_the_web_group`
 
-**Status** Pass (automated and isolated local browser, 21 Sep 2026); release verification pending
+**Status** Pass (automated and isolated local browser 21 Sep 2026; production-verified 28 Sep 2026)
 
 ---
 
@@ -235,7 +235,7 @@ Both inactive cases are denied. In the out-of-band case, middleware logs out the
 - `InactiveUserAccessTest::test_a_rotated_remember_token_cannot_restore_a_deactivated_user`
 - `InactiveUserAccessTest::test_an_unrotated_remember_token_is_rejected_by_the_middleware`
 
-**Status** Pass (automated, 21 Sep 2026); fresh-browser manual check pending
+**Status** Pass (automated 21 Sep 2026; fresh-browser production check passed 28 Sep 2026)
 
 ---
 
@@ -265,7 +265,7 @@ The target is signed out; a later correct-password login attempt gives the CLSD 
 - `LoginTest::test_inactive_user_cannot_login`
 - `LoginTest::test_inactive_user_with_wrong_password_gets_the_generic_error`
 
-**Status** Pass (automated and isolated local browser, 21 Sep 2026); two-browser Admin UI check pending
+**Status** Pass (automated and isolated local browser 21 Sep 2026; two-browser production check passed 28 Sep 2026)
 
 ---
 
@@ -1677,7 +1677,7 @@ Login is rejected. A correct password shows the deactivation message naming CLSD
 **Automated by**
 `UserManagementTest::test_deactivated_user_cannot_log_in`
 
-**Status** Pass (21 Sep 2026 DEF-013 update; release verification pending)
+**Status** Pass (automated 21 Sep 2026; production-verified 28 Sep 2026)
 
 ---
 
@@ -2233,9 +2233,9 @@ Login is rejected. With the correct password, the user sees the deactivation mes
 `UserManagementTest::test_deactivated_user_cannot_log_in`
 
 **Production verification**
-Passed 14 Sep 2026 using the temporary requester account from TC-078.
+The original denial check passed 14 Sep 2026. On 28 Sep 2026, the updated DEF-013 behaviour passed using the dedicated requester test account: Admin deactivation rejected the existing session and remembered login, correct credentials showed the CLSD Legal explanation, a wrong password remained generic, and reactivation restored normal access.
 
-**Status** Pass locally after DEF-013 (21 Sep 2026); updated production check pending
+**Status** Pass (automated 21 Sep 2026; production-verified 28 Sep 2026)
 
 ---
 
