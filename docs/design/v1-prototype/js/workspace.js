@@ -65,9 +65,9 @@
   function sidePanel(s, u) {
     const legal = A.isLegal(u);
     const req = A.user(s.requesterId);
-    return `<div class="card card-pad side-card"><h3>Who acts next</h3>
+    return `${legal ? `<div class="card card-pad side-card"><h3>Who acts next</h3>
         <div style="font-size:1.05rem">${A.nextActorHtml(s, u)}</div>
-        <p class="small muted" style="margin-top:6px">${esc(A.nextStepShort(s, legal))}</p></div>
+        <p class="small muted" style="margin-top:6px">${esc(A.nextStepShort(s, legal))}</p></div>` : ''}
       <div class="card card-pad side-card"><h3>Submission details</h3>
         <dl class="kv">
           <dt>Requester</dt><dd>${legal ? `${esc(req.name)}<div class="xsmall muted">${esc(req.title)}</div>` : 'You'}</dd>
@@ -83,7 +83,7 @@
           <dt>Last update</dt><dd>${A.fmt(s.updatedAt)}</dd>
           ${s.agreementId ? `<dt>Register record</dt><dd>${legal ? `<a href="#/register/${s.agreementId}">${esc(s.agreementId)}</a>` : esc(s.agreementId)}</dd>` : ''}
         </dl></div>
-      ${legal ? `<div class="notice neutral small">${icon('users')}<div>Shared queue: Nadia and Hana can both review and act on every submission. “Last handled by” is informational, not an assignment.</div></div>` : `<div class="notice neutral small">${icon('lock')}<div>Only you and CLSD Legal can see this submission. To withdraw it, ask Legal in the Conversation.</div></div>`}`;
+      ${legal ? `<div class="notice neutral small">${icon('users')}<div>Shared queue: Nadia and Hana can both review and act on every submission. “Last handled by” is informational, not an assignment.</div></div>` : `<div class="notice neutral small">${icon('lock')}<div>Visible only to you and CLSD Legal. To withdraw, message Legal.</div></div>`}`;
   }
   function stampText(s) {
     const st = A.stampingApplies(s);
@@ -101,7 +101,7 @@
     const req = A.openRequest(s);
     switch (s.status) {
       case 'pending_review':
-        return infoCard('', 'Next step · Waiting for Legal', 'Submitted — Legal will start the review', 'You don\'t need to do anything now. Your documents are locked while Legal reviews them. If you notice a mistake, send Legal a message in the Conversation.');
+        return infoCard('', 'Waiting for Legal', 'Legal will review your submission', 'No action needed. Use Conversation to report a mistake.');
       case 'in_review':
         return infoCard('', 'Next step · Waiting for Legal', 'Legal is reviewing your submission', 'You don\'t need to do anything now. Legal will contact you here if they need a clarification or a revised document.');
       case 'action_required': return actionRequiredPanel(s, u, req);
@@ -421,9 +421,9 @@
           const v = A.currentVersion(s, x.key);
           return `<div class="row" style="justify-content:space-between"><span>${icon(v ? 'file' : 'alert')} <strong>${esc(A.slotLabel(x.key))}</strong></span><span class="small ${v ? 'muted' : ''}" style="${v ? '' : 'color:var(--amber)'}">${v ? `v${A.versionNo(s, x.key, v)} · ${esc(v.label)} · ${esc(v.filename)}` : x.execution ? 'Not yet — execution stage' : 'Missing'}</span></div>`;
         }).join('')}</div></div>
-      ${last ? `<div class="card card-pad"><div class="row"><h3 style="flex:1">Latest in Conversation</h3><a class="btn sm ghost" href="#/sub/${s.id}/conversation">Open Conversation</a></div>
+      ${last ? `<div class="card card-pad"><div class="row"><h3 style="flex:1">${legal ? 'Latest in Conversation' : 'Latest message'}</h3><a class="btn sm ghost" href="#/sub/${s.id}/conversation">${legal ? 'Open Conversation' : 'View conversation'}</a></div>
         <p class="small muted" style="margin-top:6px">${esc(A.personName(last.by, true))} · ${A.fmt(last.at)}</p><p style="margin-top:4px">${esc(last.text.length > 220 ? last.text.slice(0, 220) + '…' : last.text || '(Response submitted)')}</p></div>` : ''}
-      <div class="card card-pad"><div class="row"><h3 style="flex:1">Recent activity</h3><a class="btn sm ghost" href="#/sub/${s.id}/activity">Full ${legal ? 'audit' : 'activity'}</a></div>
+      <div class="card card-pad"><div class="row"><h3 style="flex:1">Recent activity</h3><a class="btn sm ghost" href="#/sub/${s.id}/activity">${legal ? 'Full audit' : 'View activity'}</a></div>
         <ul class="timeline" style="margin-top:6px">${acts.map((a) => `<li><span class="t-when">${A.fmt(a.at)}</span><span>${esc(a.text)}<div class="t-who">${esc(A.personName(a.by, true))}</div></span></li>`).join('')}</ul></div>
     </div>`;
   }
