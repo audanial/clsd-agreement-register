@@ -158,7 +158,7 @@
       <fieldset style="margin-top:14px"><legend>Why is it not proceeding? <span class="req" style="color:var(--maroon)">*</span></legend><div class="choice-list">
         ${['Requester withdrew', 'Partner declined', 'Legal determined it cannot proceed'].map((o) => `<label class="choice ${d.kind === o ? 'selected' : ''}"><input type="radio" name="closekind" value="${o}" data-bind="modal.data.kind" data-live="modal" ${d.kind === o ? 'checked' : ''}><span>${o}</span></label>`).join('')}</div></fieldset>
       <label class="field" style="margin-top:12px"><span class="label">Closure reason <span class="req">*</span></span><textarea class="textarea" data-bind="modal.data.text" placeholder="What happened? The requester will see this reason.">${esc(d.text)}</textarea></label>
-      <p class="small muted" style="margin-top:8px">${icon('ban')} A Not Proceeding submission cannot create an Agreement Register record. Legal can reopen it later with a reason.</p>`,
+      <p class="small muted" style="margin-top:8px">${icon('ban')} A Not Proceeding submission cannot create an Agreement Register record. Legal can reopen it later with a reason; it returns to <strong>${esc(A.STATUS[A.sub(d.subId).status].label)}</strong>.</p>`,
     foot: () => `<button class="btn" data-act="close-modal">Cancel</button><button class="btn danger" data-act="close-confirm">${icon('ban')}Close as Not Proceeding</button>`,
   };
 
@@ -166,7 +166,7 @@
     title: () => 'Reopen submission',
     body: (d) => {
       const s = A.sub(d.subId);
-      return `<p class="muted">Reopening returns this submission to <strong>${esc(A.STATUS[s.prevStatus || 'in_review'].label)}</strong>, the stage it was closed from. The closure and its reason stay in the history.</p>
+      return `<p class="muted">Reopening returns this submission to <strong>${esc(A.STATUS[s.prevStatus || 'in_review'].label)}</strong>, the stage it was closed from. It is the same submission, not a new one, and the closure and its reason stay in the history.</p>
         <label class="field" style="margin-top:12px"><span class="label">Reason for reopening <span class="req">*</span></span><textarea class="textarea" data-bind="modal.data.text" placeholder="e.g. The partner has confirmed the placement will go ahead in January.">${esc(d.text)}</textarea></label>`;
     },
     foot: () => `<button class="btn" data-act="close-modal">Cancel</button><button class="btn primary" data-act="reopen-confirm">${icon('refresh')}Reopen</button>`,
@@ -476,7 +476,11 @@
     if (!A.unikSignedVersion(A.sub(id))) { A.toast('Upload the UniKL-signed agreement PDF first.', 'error'); return; }
     done(A.actions.sendForPartner(id, rev(id)), id, 'Sent to the requester for the partner\'s signature.');
   };
-  H['verify-check'] = (el) => { const c = UI.verifyChecks[el.dataset.sub]; c[el.dataset.key] = el.checked; A.render(); };
+  H['verify-check'] = (el) => {
+    const c = UI.verifyChecks[el.dataset.sub]; c[el.dataset.key] = el.checked; A.render();
+    // The page re-renders, so put keyboard focus back on the checkbox just ticked.
+    const again = document.querySelector(`[data-act="verify-check"][data-sub="${el.dataset.sub}"][data-key="${el.dataset.key}"]`); if (again) again.focus();
+  };
   H['verify-final'] = (el) => {
     const id = el.dataset.sub; const s = A.sub(id);
     const c = UI.verifyChecks[id] || {};
@@ -485,7 +489,7 @@
     if (!c.agreement || (A.stampingApplies(s) === true && !c.certificate)) { A.toast('Confirm each verification check first.', 'error'); return; }
     confirmBox({
       subId: id, title: 'Mark Fully Executed?', ok: 'Mark Fully Executed',
-      body: '<p>This confirms the final signed package. Replacement uploads are then locked; downloads and history remain available.</p><p class="small muted" style="margin-top:8px">The Agreement Register record is <strong>not</strong> created automatically — you will create it in the next step.</p>',
+      body: `<p>This accepts the final signed package: <strong>Agreement v${s.slots.agreement.versions.length}</strong>${A.stampingApplies(s) === true ? ` and <strong>LHDN Stamp Certificate v${s.slots.stamp_certificate.versions.length}</strong>` : ''}. Replacement uploads are then locked. Downloads and version history stay available.</p><p class="small muted" style="margin-top:8px">The Agreement Register record is <strong>not</strong> created automatically. Creating it is the next, separate step.</p>`,
       fn: () => { const r = A.actions.verifyFinal(id, c, rev(id)); if (r.ok) after(id, r); A.modalResult(r, 'Fully Executed. You can now create the Register record.'); },
     });
   };
@@ -493,7 +497,13 @@
   H['close-confirm'] = () => {
     const d = UI.modal.data;
     if (!d.kind) { UI.modal.error = 'Choose why it is not proceeding.'; A.renderModal(); return; }
-    const res = A.actions.closeNotProceeding(d.subId, d.text && d.text.trim() ? `${d.kind}: ${d.text.trim()}` : '', rev(d.subId));
+    const detail = (d.text || '').trim();
+    if (detail.length < 10) {
+      UI.modal.error = 'Enter at least 10 characters explaining what happened.'; A.renderModal();
+      const t = document.querySelector('.modal textarea[data-bind="modal.data.text"]'); if (t) t.focus();
+      return;
+    }
+    const res = A.actions.closeNotProceeding(d.subId, `${d.kind}: ${detail}`, rev(d.subId));
     if (res.ok) after(d.subId, res);
     A.modalResult(res, 'Closed as Not Proceeding. History is kept.');
   };

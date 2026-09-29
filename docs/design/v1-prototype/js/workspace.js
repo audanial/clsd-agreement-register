@@ -285,7 +285,7 @@
     if (s.status === 'fully_executed') {
       return `<div class="card card-pad next-card done">${legal ? `<div class="kicker">Next step · Legal</div>
         <h2>Fully Executed on ${A.fmtDate(m.fullyExecutedAt)}</h2>
-        <p class="muted" style="margin-top:6px">Verified by ${esc(A.personName(m.fullyExecutedBy, true))}. Review the details and create the official Agreement Register record — it is never created automatically.</p>`
+        <p class="muted" style="margin-top:6px">Verified by ${esc(A.personName(m.fullyExecutedBy, true))}. Next: create the official Agreement Register record. It is never created automatically.</p>`
         : `<h2>Legal verified your final documents</h2>
         <p class="muted" style="margin-top:6px">No action needed from you. Legal creates the official Agreement Register record next.</p>
         <p class="small muted" style="margin-top:4px">${esc(A.personName(m.fullyExecutedBy, true))} · ${A.fmt(m.fullyExecutedAt)}</p>`}
@@ -342,23 +342,23 @@
       case 'review_completed': {
         const signed = A.unikSignedVersion(s);
         const err = UI.uploadErrors[s.id + ':agreement'];
-        return `<div class="card card-pad next-card"><div class="kicker">Next step · Legal · Review completed ${A.fmtDate(s.milestones.reviewCompletedAt)}</div>
-          <h2>Obtain the ${esc(A.signatory(s))}'s signature</h2>
-          <p class="muted" style="margin-top:6px">${s.category} agreements are signed for UniKL by the ${esc(A.signatory(s))}. Upload the signed copy as a new Agreement version, then send it to the requester for the partner's signature.</p>
+        const vn = s.slots.agreement.versions.length;
+        return `<div class="card card-pad next-card"><h2>Get the ${esc(A.signatory(s))}'s signature</h2>
+          <p class="muted" style="margin-top:6px">Review completed ${A.fmtDate(s.milestones.reviewCompletedAt)}. Upload the UniKL-signed PDF, then send it to the requester for the partner's signature.</p>
           <div style="margin-top:12px">
             <div class="slot-row ${signed ? 'done' : ''}"><div><div class="strong">${icon(signed ? 'check' : 'upload')} UniKL-signed agreement (PDF)</div>
-              <div class="small muted">${signed ? `v${s.slots.agreement.versions.length} · ${esc(signed.filename)} · uploaded ${A.fmt(signed.at)}` : 'Not uploaded yet'}</div>
-              ${err ? `<div class="small" style="color:var(--red)">${icon('alert')} Upload failed: ${esc(err)} Current version unchanged.</div>` : ''}</div>
-              <button class="btn sm ${signed ? '' : 'primary'}" data-act="upload" data-sub="${s.id}" data-key="agreement">${icon('upload')}${signed ? 'Replace' : 'Upload UniKL-signed PDF'}</button></div>
+              <div class="small muted" style="overflow-wrap:anywhere">${signed ? `v${vn} · ${esc(signed.filename)} · uploaded ${A.fmt(signed.at)}` : 'Not uploaded yet'}</div>
+              ${err ? `<div class="small" style="color:var(--red)">${icon('alert')} Upload failed: ${esc(err)} The current version is unchanged.</div>` : ''}</div>
+              <button class="btn sm ${signed ? '' : 'primary'}" data-act="upload" data-sub="${s.id}" data-key="agreement">${icon('upload')}${signed ? 'Replace file' : 'Upload UniKL-signed PDF'}</button></div>
           </div>
-          <div class="actions"><button class="btn primary lg" data-act="send-partner" data-sub="${s.id}" data-rev="${rev}" ${signed ? '' : 'aria-disabled="true"'}>${icon('arrow')}Send to requester for partner signature</button></div>
+          <div class="row-wrap" style="margin-top:14px"><button class="btn primary lg" data-act="send-partner" data-sub="${s.id}" data-rev="${rev}" aria-describedby="send-status" ${signed ? '' : 'aria-disabled="true"'}>${icon('arrow')}Send to requester for partner signature</button>
+            <span class="small muted" id="send-status">${signed ? `Sends v${vn}. Earlier versions stay in Documents.` : 'Upload the UniKL-signed PDF first.'}</span></div>
           ${secondary([close])}</div>`;
       }
       case 'awaiting_partner':
       case 'awaiting_stamping':
-        return `<div class="card card-pad next-card requester"><div class="kicker">Waiting for Requester</div>
-          <h2>${s.status === 'awaiting_partner' ? 'Requester is obtaining the partner\'s signature' : 'Requester is completing LHDN stamping'}</h2>
-          <p class="muted" style="margin-top:6px">${s.status === 'awaiting_partner' ? `UniKL-signed Agreement v${s.slots.agreement.versions.map((v) => v.label).lastIndexOf('UniKL Signed') + 1} was sent on ${A.fmt(s.milestones.sentForPartnerAt)}.` : `The both-parties-signed agreement was submitted on ${A.fmt(s.milestones.partnerSignedAt)}. Waiting for the standalone stamp certificate.`} Nothing for Legal to do until the requester submits.</p>
+        return `<div class="card card-pad next-card requester"><h2>${s.status === 'awaiting_partner' ? 'Requester is getting the partner\'s signature' : 'Requester is completing LHDN stamping'}</h2>
+          <p class="muted" style="margin-top:6px">${s.status === 'awaiting_partner' ? `Sent UniKL-signed Agreement v${s.slots.agreement.versions.map((v) => v.label).lastIndexOf('UniKL Signed') + 1} on ${A.fmt(s.milestones.sentForPartnerAt)}.` : `Signed Agreement v${s.slots.agreement.versions.length} submitted on ${A.fmt(s.milestones.partnerSignedAt)}. Waiting for the LHDN stamp certificate.`} No action for Legal until the requester submits.</p>
           ${secondary([close])}</div>`;
       case 'final_verification': return finalVerificationPanel(s, rev, secondary, close);
       case 'fully_executed':
@@ -376,20 +376,26 @@
     const cert = stamp === true ? A.currentVersion(s, 'stamp_certificate') : null;
     const b = A.finalBlockers(s);
     const ready = !b.length && c.agreement && (stamp !== true || c.certificate);
-    return `<div class="card card-pad next-card"><div class="kicker">Next step · Legal · Final verification</div>
-      <h2>Verify the final package</h2>
-      <p class="muted" style="margin-top:6px">Only Legal or Admin can mark Fully Executed. The review-completion milestone (${A.fmtDate(s.milestones.reviewCompletedAt)}) stays recorded whatever happens here.</p>
+    const cn = s.slots.stamp_certificate ? s.slots.stamp_certificate.versions.length : 0;
+    // Everything still standing between Legal and Mark Fully Executed, in one list the button points to.
+    const remaining = b.slice();
+    if (!c.agreement) remaining.push('Tick the agreement check.');
+    if (stamp === true && !c.certificate) remaining.push('Tick the stamp certificate check.');
+    const dl = (key, n, label) => `<button class="btn sm ghost" data-act="download" data-sub="${s.id}" data-key="${key}" data-n="${n}" aria-label="Download ${label}">${icon('download')}Download</button>`;
+    return `<div class="card card-pad next-card"><h2>Verify the final package</h2>
+      <p class="muted" style="margin-top:6px">Check each document, then mark Fully Executed. Returning it for correction keeps the Review Completed record.</p>
       <div class="stack-sm" style="margin-top:12px">
-        <div class="slot-row"><div><div class="file">${A.fileIco(a.ext)}<div><div class="file-name">${esc(a.filename)}</div><div class="file-meta">Agreement v${an} · ${esc(a.label)} · ${esc(A.personName(a.by, true))}, ${A.fmt(a.at)}</div></div></div>
-          <label class="check" style="margin-top:8px"><input type="checkbox" data-act="verify-check" data-sub="${s.id}" data-key="agreement" ${c.agreement ? 'checked' : ''}><span class="small">Both UniKL's and the partner's signatures are on the same agreement that UniKL signed (v${unikN}).</span></label></div>
-          <button class="btn sm ghost" data-act="download" data-sub="${s.id}" data-key="agreement" data-n="${an}">${icon('download')}Download</button></div>
-        ${stamp === true ? `<div class="slot-row"><div><div class="file">${A.fileIco(cert ? cert.ext : '')}<div><div class="file-name">${cert ? esc(cert.filename) : 'Missing'}</div><div class="file-meta">LHDN Stamp Certificate${cert ? ` v${s.slots.stamp_certificate.versions.length} · separate document` : ''}</div></div></div>
-          <label class="check" style="margin-top:8px"><input type="checkbox" data-act="verify-check" data-sub="${s.id}" data-key="certificate" ${c.certificate ? 'checked' : ''}><span class="small">The LHDN stamp certificate matches this agreement.</span></label></div>
-          ${cert ? `<button class="btn sm ghost" data-act="download" data-sub="${s.id}" data-key="stamp_certificate" data-n="${s.slots.stamp_certificate.versions.length}">${icon('download')}Download</button>` : ''}</div>`
-          : `<div class="notice neutral small">${icon('info')}<div>No LHDN stamp certificate is needed — ${s.type === 'ADDENDUM' ? 'Legal recorded that stamping is not required for this Addendum' : `stamping does not apply to an ${esc(s.type)}`}.</div></div>`}
+        <div class="slot-row"><div><div class="file">${A.fileIco(a.ext)}<div><div class="file-name" style="overflow-wrap:anywhere">${esc(a.filename)}</div><div class="file-meta">Agreement v${an} · ${esc(a.label)} · ${esc(A.personName(a.by, true))}, ${A.fmt(a.at)}</div></div></div>
+          <label class="check" style="margin-top:8px"><input type="checkbox" data-act="verify-check" data-sub="${s.id}" data-key="agreement" ${c.agreement ? 'checked' : ''}><span class="small">This PDF carries UniKL's and the partner's signatures on the agreement UniKL signed (v${unikN}).</span></label></div>
+          ${dl('agreement', an, `Agreement v${an}`)}</div>
+        ${stamp === true ? `<div class="slot-row"><div><div class="file">${A.fileIco(cert ? cert.ext : '')}<div><div class="file-name" style="overflow-wrap:anywhere">${cert ? esc(cert.filename) : 'Missing'}</div><div class="file-meta">LHDN Stamp Certificate${cert ? ` v${cn} · separate document · ${esc(A.personName(cert.by, true))}, ${A.fmt(cert.at)}` : ''}</div></div></div>
+          <label class="check" style="margin-top:8px"><input type="checkbox" data-act="verify-check" data-sub="${s.id}" data-key="certificate" ${c.certificate ? 'checked' : ''}><span class="small">This LHDN stamp certificate matches Agreement v${an}.</span></label></div>
+          ${cert ? dl('stamp_certificate', cn, `LHDN Stamp Certificate v${cn}`) : ''}</div>`
+          : `<p class="small muted">No LHDN stamp certificate needed${s.type === 'ADDENDUM' ? ': Legal recorded that stamping is not required' : ` for an ${esc(s.type)}`}.</p>`}
       </div>
-      ${b.length ? `<ul class="blockers">${b.map((x) => `<li class="no">${icon('alert')}${esc(x)}</li>`).join('')}</ul>` : ''}
-      <div class="actions"><button class="btn primary lg" data-act="verify-final" data-sub="${s.id}" data-rev="${rev}" ${ready ? '' : 'aria-disabled="true"'}>${icon('check')}Mark Fully Executed</button>
+      ${ready ? `<p class="small" id="verify-status" style="color:var(--green);margin-top:10px">${icon('check')} Ready to mark Fully Executed.</p>`
+        : `<ul class="blockers" id="verify-status" aria-label="What is still needed to mark Fully Executed">${remaining.map((x) => `<li class="no">${icon('alert')}${esc(x)}</li>`).join('')}</ul>`}
+      <div class="actions"><button class="btn primary lg" data-act="verify-final" data-sub="${s.id}" data-rev="${rev}" aria-describedby="verify-status" ${ready ? '' : 'aria-disabled="true"'}>${icon('check')}Mark Fully Executed</button>
         <button class="btn" data-act="open-request" data-sub="${s.id}">${icon('refresh')}Return for correction</button></div>
       ${secondary([close])}</div>`;
   }
