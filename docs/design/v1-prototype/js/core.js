@@ -591,27 +591,30 @@
 
   function registerBlockers(s) {
     const b = [];
-    if (s.status !== 'fully_executed') b.push('Only Fully Executed submissions can be registered.');
+    if (s.status !== 'fully_executed' && !s.agreementId) b.push(`This submission is ${A.STATUS[s.status].label}. Only Fully Executed submissions can be registered.`);
     if (s.agreementId) b.push(`Already registered as ${s.agreementId}.`);
     if (s.type === 'ADDENDUM' && s.addendum.linkStatus !== 'confirmed') b.push('Confirm the original agreement this Addendum modifies before registering.');
     return b;
   }
 
   actions.createRegister = function (id, f, rev) {
+    if (!isLegal(me())) return fail('Only Legal or Admin can create Agreement Register records.');
     const s0 = sub(id);
     const b = s0 ? registerBlockers(s0) : ['Not available.'];
     if (b.length) return fail(b.join(' '));
-    const errs = registerFieldErrors(f);
+    const errs = registerFieldErrors(f || {});
     if (Object.keys(errs).length) return { ok: false, error: 'Complete the highlighted fields.', fields: errs };
     const { s, u, err } = begin(id, rev, true);
     if (err) return err;
     // Atomic: build the record and link first, then commit both together.
+    // Type, submission link, original agreement, creator and status come from trusted state, never from the form.
+    // Every new record needs a fixed expiry date; the form's `indefinite` flag, if present, is ignored.
     const agrId = 'AGR-2026-' + String(S.nextAgr).padStart(3, '0');
     const rec = {
-      id: agrId, type: f.type, moaSubtype: f.type === 'MOA' ? f.moaSubtype.trim() : '', title: f.title.trim(), partner: f.partner.trim(),
-      location: f.location, category: f.category, campus: f.campus, dateSigned: f.dateSigned, expiry: f.indefinite ? null : f.expiry,
+      id: agrId, type: s.type, moaSubtype: s.type === 'MOA' ? (f.moaSubtype || '').trim() : '', title: f.title.trim(), partner: f.partner.trim(),
+      location: f.location, category: f.category, campus: f.campus, dateSigned: f.dateSigned, expiry: f.expiry,
       pic: f.pic.trim(), status: 'signed', submissionId: s.id, originalId: s.type === 'ADDENDUM' ? s.addendum.originalId : null,
-      notes: f.notes.trim(), createdBy: u.id, createdAt: now(),
+      notes: (f.notes || '').trim(), createdBy: u.id, createdAt: now(),
     };
     S.nextAgr += 1;
     S.register.unshift(rec);
@@ -625,12 +628,26 @@
 
   function registerFieldErrors(f) {
     const e = {};
+    // Every new Register record needs a fixed expiry date. Past dates are fine if they are after Date signed.
+    // Strict calendar check: exact YYYY-MM-DD, and the date must survive a round trip unchanged (rejects 2026-02-30, 2026-02-29, 2026-04-31, 2026-13-01).
+    const isDate = (v) => {
+      const m = typeof v === 'string' && /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+      if (!m) return false;
+      const y = Number(m[1]); const mo = Number(m[2]); const d = Number(m[3]);
+      const dt = new Date(Date.UTC(y, mo - 1, d));
+      return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+    };
     if (!f.title || !f.title.trim()) e.title = 'Enter the agreement title.';
     if (!f.partner || !f.partner.trim()) e.partner = 'Enter the partner name.';
     if (!f.dateSigned) e.dateSigned = 'Enter the date the agreement was fully signed.';
-    if (!f.indefinite && !f.expiry) e.expiry = 'Enter an expiry date, or tick "No fixed expiry".';
-    if (!f.indefinite && f.expiry && f.dateSigned && f.expiry <= f.dateSigned) e.expiry = 'Expiry must be after the signing date.';
+    else if (!isDate(f.dateSigned)) e.dateSigned = 'Enter a valid date.';
+    if (!f.expiry) e.expiry = 'Enter the expiry date.';
+    else if (!isDate(f.expiry)) e.expiry = 'Enter a valid date.';
+    else if (isDate(f.dateSigned) && f.expiry <= f.dateSigned) e.expiry = 'Expiry must be after the date signed.';
     if (!f.pic || !f.pic.trim()) e.pic = 'Enter the PIC\'s name.';
+    if (!['Academic', 'Industry'].includes(f.category)) e.category = 'Choose a category.';
+    if (!['Local', 'International'].includes(f.location)) e.location = 'Choose a location.';
+    if (!A.CAMPUSES.some((c) => c[0] === f.campus)) e.campus = 'Choose a campus or department.';
     return e;
   }
 
