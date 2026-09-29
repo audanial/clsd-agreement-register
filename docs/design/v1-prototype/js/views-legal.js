@@ -33,45 +33,50 @@
     const usedCampuses = [...new Set(all.map((s) => s.campus))];
     const filtered = f.status || f.category || f.campus || f.since || q;
 
+    const primary = ['legal', 'requester', 'unread'];
+    const pill = (k) => `<button class="pill" data-act="queue-tab" data-tab="${k}" aria-pressed="${f.tab === k}">${groups[k].label}<span class="n">${all.filter(groups[k].fn).length}</span></button>`;
+    // The view already says who acts next in the two waiting views, so those rows show only the step.
+    const showActor = !['legal', 'requester'].includes(f.tab);
+
     return `<div class="page">
-      <div class="page-head"><div style="flex:1"><h1>Submission Queue</h1><p class="lede">Every submission from every campus and department. Shared by all Legal users — anyone can review and act; nothing is exclusively assigned.</p></div></div>
+      <div class="page-head"><div style="flex:1"><h1>Submission Queue</h1><p class="lede">Shared by all Legal users. Anyone can act on any submission.</p></div></div>
       <div class="card">
         <div class="toolbar">
           <div class="tabs-pill" role="group" aria-label="Queue views">
-            ${Object.keys(groups).map((k) => `<button class="pill" data-act="queue-tab" data-tab="${k}" aria-pressed="${f.tab === k}">${groups[k].label}<span class="n">${all.filter(groups[k].fn).length}</span></button>`).join('')}
+            ${primary.map(pill).join('')}<span class="pill-sep" aria-hidden="true"></span>${Object.keys(groups).filter((k) => !primary.includes(k)).map(pill).join('')}
           </div>
         </div>
-        <div class="toolbar" style="background:var(--surface-2)">
-          <label class="sr-only" for="q-search">Search</label>
-          <input id="q-search" class="input search" type="search" placeholder="Search title, partner, requester or ID" value="${esc(f.q)}" data-bind="queueFilter.q" data-live="rerender">
+        <div class="toolbar queue-filters" role="search" aria-label="Filter submissions" style="background:var(--surface-2)">
+          <label class="sr-only" for="q-search">Search by ID, title, partner, requester or type</label>
+          <input id="q-search" class="input search" type="search" placeholder="Search ID, title, partner, requester" value="${esc(f.q)}" data-bind="queueFilter.q" data-live="rerender">
           <label class="sr-only" for="q-status">Status</label>
           <select id="q-status" class="select inline" data-bind="queueFilter.status" data-live="rerender"><option value="">Any status</option>${Object.keys(A.STATUS).map((k) => `<option value="${k}" ${f.status === k ? 'selected' : ''}>${esc(A.STATUS[k].label)}</option>`).join('')}</select>
           <label class="sr-only" for="q-cat">Category</label>
           <select id="q-cat" class="select inline" data-bind="queueFilter.category" data-live="rerender"><option value="">Any category</option><option ${f.category === 'Academic' ? 'selected' : ''}>Academic</option><option ${f.category === 'Industry' ? 'selected' : ''}>Industry</option></select>
-          <label class="sr-only" for="q-campus">Campus</label>
+          <label class="sr-only" for="q-campus">Campus or department</label>
           <select id="q-campus" class="select inline" data-bind="queueFilter.campus" data-live="rerender"><option value="">Any campus / dept.</option>${usedCampuses.map((c) => `<option value="${c}" ${f.campus === c ? 'selected' : ''}>${esc(A.campusShort(c))}</option>`).join('')}</select>
           <label class="sr-only" for="q-since">Latest update</label>
-          <select id="q-since" class="select inline" data-bind="queueFilter.since" data-live="rerender"><option value="">Updated any time</option><option value="1" ${f.since === '1' ? 'selected' : ''}>Updated in last 24 hours</option><option value="7" ${f.since === '7' ? 'selected' : ''}>Updated in last 7 days</option><option value="30" ${f.since === '30' ? 'selected' : ''}>Updated in last 30 days</option></select>
+          <select id="q-since" class="select inline" data-bind="queueFilter.since" data-live="rerender"><option value="">Updated any time</option><option value="1" ${f.since === '1' ? 'selected' : ''}>Updated in 24 hours</option><option value="7" ${f.since === '7' ? 'selected' : ''}>Updated in 7 days</option><option value="30" ${f.since === '30' ? 'selected' : ''}>Updated in 30 days</option></select>
           ${filtered ? '<button class="btn sm ghost" data-act="queue-clear">Clear filters</button>' : ''}
         </div>
-        ${rows.length ? `<div class="table-wrap"><table class="table"><thead><tr>
-          <th>Submission</th><th>Requester · Campus</th><th>Classification</th><th>Status</th><th>Next</th><th><span class="sr-only">Unread for me</span>${icon('message')}</th><th>Latest update · Last handled by</th></tr></thead><tbody>
+        ${rows.length ? `<div class="table-wrap"><table class="table queue-table"><caption class="sr-only">${esc(groups[f.tab].label)}: ${rows.length} submission${rows.length === 1 ? '' : 's'}, latest update first</caption><thead><tr>
+          <th scope="col">Submission</th><th scope="col">Requester</th><th scope="col">${showActor ? 'Next · Status' : 'Next step · Status'}</th><th scope="col">Unread</th><th scope="col">Latest update</th></tr></thead><tbody>
           ${rows.map((s) => {
             const un = A.unreadCount(u, s);
             const req = A.user(s.requesterId);
             const addWarn = s.type === 'ADDENDUM' && s.addendum.linkStatus === 'unresolved';
             return `<tr class="clickable ${un ? 'unread' : ''}" data-act="open-sub" data-sub="${s.id}">
-              <td class="title-cell"><a href="#/sub/${s.id}/overview">${esc(s.title)}</a><div class="sub">${esc(s.id)} · ${esc(s.partner)}</div>${addWarn ? `<div class="sub" style="color:var(--amber)">${icon('alert')} Original agreement unresolved</div>` : ''}</td>
+              <td class="title-cell"><a href="#/sub/${s.id}/overview">${esc(s.title)}</a><div class="sub">${esc(s.id)} · ${esc(s.partner)}</div><div class="sub">${A.typeLabel(s)} · ${esc(s.category)} · ${esc(s.location)}</div>${addWarn ? `<div class="sub" style="color:var(--amber)">${icon('alert')} Original agreement unresolved</div>` : ''}</td>
               <td>${esc(req.name)}<div class="sub">${esc(A.campusShort(s.campus))}</div></td>
-              <td><span class="chip">${A.typeLabel(s)}</span><div class="sub">${esc(s.category)} · ${esc(s.location)}</div></td>
-              <td class="status-cell">${A.statusBadge(s)}</td>
-              <td>${A.nextActorHtml(s, u)}<div class="sub">${esc(A.nextStepShort(s, true))}</div></td>
-              <td>${un ? `<span class="unread-dot" title="${un} unread for you">${un}</span>` : '<span class="faint">—</span>'}</td>
-              <td class="nowrap">${A.fmt(s.updatedAt)}<div class="sub">${s.lastHandler ? `Last handled by ${esc(A.personName(s.lastHandler))}` : 'Not yet handled by Legal'}</div></td></tr>`;
+              <td class="status-cell">${showActor ? `${A.nextActorHtml(s, u)}<div class="sub">${esc(A.nextStepShort(s, true))}</div>` : `<div class="strong">${esc(A.nextStepShort(s, true))}</div>`}<div style="margin-top:6px">${A.statusBadge(s)}</div></td>
+              <td>${un ? `<span class="unread-dot" title="${un} unread for you">${un}<span class="sr-only"> unread for you</span></span>` : '<span class="faint" aria-hidden="true">—</span><span class="sr-only">None unread</span>'}</td>
+              <td>${A.fmt(s.updatedAt)}<div class="sub">${s.lastHandler ? `Last handled by ${esc(A.personName(s.lastHandler))}` : 'Not yet handled by Legal'}</div></td></tr>`;
           }).join('')}</tbody></table></div>`
-          : `<div class="empty">${icon('search')}<h3>No submissions match</h3><p>Try another view or clear the filters.</p></div>`}
+          : `<div class="empty" role="status">${icon('search')}<h3>${filtered ? 'No matching submissions' : `Nothing in ${esc(groups[f.tab].label)}`}</h3>
+            <p>${filtered ? 'Change the search or filters.' : 'Choose another view.'}</p>
+            ${filtered ? '<button class="btn sm" data-act="queue-clear">Clear filters</button>' : f.tab !== 'all' ? '<button class="btn sm" data-act="queue-tab" data-tab="all">View all</button>' : ''}</div>`}
       </div>
-      <p class="xsmall faint" style="margin-top:10px">Unread counts are personal: ${esc(A.user('nadia').name)} and ${esc(A.user('hana').name)} each keep their own read state. Highlighted rows have messages you haven't opened.</p>
+      <p class="xsmall faint" style="margin-top:10px">Unread counts are yours alone. “Last handled by” is information, not an assignment.</p>
     </div>`;
   };
 
