@@ -55,7 +55,8 @@
     reset: '<path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
     flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
     ban: '<circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/>',
-    eye_off: '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="m1 1 22 22"/>',
+    eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+    eye_off:'<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="m1 1 22 22"/>',
   };
   const icon = (n, cls) => `<svg class="ico ${cls || ''}" viewBox="0 0 24 24" aria-hidden="true">${P[n] || ''}</svg>`;
 
@@ -227,15 +228,27 @@
   const MODALS = {};
   A.MODALS = MODALS;
   function openModal(key, data) {
+    // Remember what opened the dialog so focus can return there when it closes.
+    if (!UI.modal) { const t = document.activeElement; UI.modalTrigger = t && t.dataset && t.dataset.act ? { act: t.dataset.act, sub: t.dataset.sub, key: t.dataset.key } : null; }
     UI.modal = { key, data: data || {}, error: null, conflict: false };
     renderModal();
     setTimeout(() => {
       const root = document.getElementById('modal-root');
       const f = root.querySelector('[autofocus], .modal-body input:not([type=hidden]), .modal-body textarea, .modal-body select, .modal-body button');
-      (f || root.querySelector('.modal')).focus();
+      const target = f || root.querySelector('.modal');
+      if (target) target.focus();
     }, 0);
   }
-  function closeModal() { UI.modal = null; renderModal(); }
+  function closeModal() {
+    UI.modal = null; renderModal();
+    const t = UI.modalTrigger; UI.modalTrigger = null;
+    // The page may re-render after closing, so look the trigger up again just after.
+    setTimeout(() => {
+      const q = t ? `[data-act="${t.act}"]${t.sub ? `[data-sub="${t.sub}"]` : ''}${t.key ? `[data-key="${t.key}"]` : ''}` : '';
+      const el = q ? document.querySelector(q) : null;
+      (el || document.getElementById('main')).focus({ preventScroll: true });
+    }, 0);
+  }
   function renderModal() {
     const root = document.getElementById('modal-root');
     if (!UI.modal) { root.innerHTML = ''; return; }

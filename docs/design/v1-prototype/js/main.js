@@ -102,16 +102,17 @@
         ? ['agreement'].concat(A.stampingApplies(s) === true ? ['stamp_certificate'] : [])
         : A.slotList(s).filter((x) => !x.execution && !x.retired).map((x) => x.key);
       const locked = options.filter((k) => !d.slots.includes(k));
-      return `<p class="muted">${final ? 'Tell the requester exactly what is wrong with the final package. Only the documents you select are reopened. The review-completion milestone stays recorded.' : 'Ask for a written clarification, replacement documents, or both. Only the documents you select are reopened — everything else stays locked.'}</p>
-        <div class="stack" style="margin-top:14px">
-          <label class="check"><input type="checkbox" data-bind="modal.data.clarify" data-live="modal" ${d.clarify ? 'checked' : ''}><span><strong>Ask for a written clarification</strong><br><span class="small muted">The requester must answer in writing before they can submit their response.</span></span></label>
-          <fieldset><legend>Documents to replace</legend><div class="choice-list">
-            ${options.map((k) => { const v = A.currentVersion(s, k); return `<label class="check choice ${d.slots.includes(k) ? 'selected' : ''}"><input type="checkbox" data-act="request-slot" data-key="${k}" ${d.slots.includes(k) ? 'checked' : ''}><span><strong>${esc(A.slotLabel(k))}</strong><br><span class="small muted">${v ? `Current: v${A.versionNo(s, k, v)} · ${esc(v.filename)}` : 'No file yet'}</span></span></label>`; }).join('')}
-          </div></fieldset>
+      const nothing = !d.clarify && !d.slots.length;
+      return `<div class="stack">
+          <fieldset><legend>What do you need? <span class="req" style="color:var(--maroon)">*</span> <span class="small muted" style="font-weight:400">Choose at least one.</span></legend>
+            <div class="choice-list">
+              <label class="check choice ${d.clarify ? 'selected' : ''}"><input type="checkbox" data-bind="modal.data.clarify" data-live="modal" ${d.clarify ? 'checked' : ''}><span><strong>Written clarification</strong><br><span class="small muted">The requester must answer in writing.</span></span></label>
+              ${options.map((k) => { const v = A.currentVersion(s, k); return `<label class="check choice ${d.slots.includes(k) ? 'selected' : ''}"><input type="checkbox" data-act="request-slot" data-key="${k}" ${d.slots.includes(k) ? 'checked' : ''}><span><strong>Replace ${esc(A.slotLabel(k))}</strong><br><span class="small muted">${v ? `Current: v${A.versionNo(s, k, v)} · ${esc(v.filename)}` : 'No file yet'}</span></span></label>`; }).join('')}
+            </div></fieldset>
           <label class="field"><span class="label">Instructions for the requester <span class="req">*</span></span>
-            <textarea class="textarea" data-bind="modal.data.text" placeholder="Be specific: what is wrong, and exactly what you need from the requester." style="min-height:110px">${esc(d.text)}</textarea>
-            <div class="hint">Required. The requester sees this as an Action Required card in the Conversation and on their submission.</div></label>
-          <div class="notice neutral small">${icon('info')}<div>Sending moves the submission to <strong>Action Required from Requester</strong>. ${d.slots.length ? `Reopens: <strong>${d.slots.map((k) => esc(A.slotLabel(k))).join(', ')}</strong>.` : 'No document is reopened.'} ${locked.length ? `Stays locked: ${locked.map((k) => esc(A.slotLabel(k))).join(', ')}.` : ''} It returns to ${final ? 'Final Verification' : 'In Review'} only when the requester selects Submit Response.</div></div>
+            <textarea class="textarea" data-bind="modal.data.text" placeholder="What is wrong, and what do you need?" style="min-height:110px">${esc(d.text)}</textarea>
+            <div class="hint">The requester sees this as an Action Required card.</div></label>
+          <div class="notice neutral small">${icon('info')}<div>${nothing ? 'Choose what you need. No documents are reopened yet.' : `Reopens: <strong>${d.slots.length ? d.slots.map((k) => esc(A.slotLabel(k))).join(', ') : 'no documents'}</strong>.${locked.length ? ` Stays locked: ${locked.map((k) => esc(A.slotLabel(k))).join(', ')}.` : ''} Status becomes <strong>Action Required from Requester</strong> until the requester selects Submit Response${final ? ', which returns it to Final Verification' : ''}.`}</div></div>
         </div>`;
     },
     foot: (d) => `<button class="btn" data-act="close-modal">Cancel</button><button class="btn maroon" data-act="request-send">${icon('flag')}Send request</button>`,
@@ -129,31 +130,31 @@
       const missing = after.filter((k) => !has(k));
       const typeLocked = s.type === 'ADDENDUM';
       const sel = (bind, opts, val, dis) => `<select class="select" data-bind="modal.data.${bind}" data-live="modal" ${dis ? 'disabled' : ''}>${opts.map((o) => `<option ${o === val ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
-      return `<p class="muted">Current: <strong>${esc(s.category)} · ${esc(s.location)} · ${esc(s.type)}</strong>. Correcting the classification recalculates the checklist. Existing documents and their history are always kept.</p>
+      return `<p class="muted">Current: <strong>${esc(s.category)} · ${esc(s.location)} · ${esc(s.type)}</strong>. Existing documents and versions are always kept.</p>
         <div class="form-grid" style="margin-top:14px;grid-template-columns:1fr 1fr 1fr">
           <label class="field"><span class="label">Engagement category</span>${sel('category', ['Academic', 'Industry'], d.category)}</label>
           <label class="field"><span class="label">Partner location</span>${sel('location', ['Local', 'International'], d.location)}</label>
-          <label class="field"><span class="label">Agreement type</span>${sel('type', typeLocked ? ['ADDENDUM'] : ['NDA', 'MOA', 'MOU'], d.type, typeLocked)}${typeLocked ? '<div class="hint">Changing to or from Addendum is not offered here.</div>' : ''}</label>
+          <label class="field"><span class="label">Agreement type</span>${sel('type', typeLocked ? ['ADDENDUM'] : ['NDA', 'MOA', 'MOU'], d.type, typeLocked)}${typeLocked ? '<div class="hint">Locked for an Addendum.</div>' : ''}</label>
         </div>
         <div class="card" style="margin-top:14px"><div class="card-head"><h4 style="flex:1">Checklist after correction</h4><span class="chip">${esc(d.category)} · ${after.length} required</span></div>
           <div class="card-body stack-sm">${keys.map((k) => {
             const inAfter = after.includes(k); const inBefore = before.includes(k);
             let badge;
-            if (inAfter && !inBefore) badge = has(k) ? '<span class="badge tone-green">Newly required — file exists</span>' : '<span class="badge tone-amber">Newly required — missing</span>';
-            else if (inAfter) badge = '<span class="badge tone-grey plain">Still required — kept</span>';
-            else badge = '<span class="chip">No longer required — kept with history</span>';
+            if (inAfter && !inBefore) badge = has(k) ? '<span class="badge tone-green">Newly required · file kept</span>' : '<span class="badge tone-amber">Newly required · missing</span>';
+            else if (inAfter) badge = '<span class="badge tone-grey plain">Still required · kept</span>';
+            else badge = '<span class="chip">No longer required · kept</span>';
             return `<div class="row" style="justify-content:space-between"><span>${esc(A.slotLabel(k))}</span>${badge}</div>`;
           }).join('')}</div></div>
-        <div class="notice ${missing.length ? 'warn' : 'neutral'} small" style="margin-top:12px">${icon(missing.length ? 'flag' : 'info')}<div>${missing.length ? `Saving moves the submission to <strong>Action Required from Requester</strong> and reopens only: <strong>${missing.map((k) => esc(A.slotLabel(k))).join(', ')}</strong>.` : 'No new documents are needed. The status does not change; the requester is told about the correction in the Conversation.'}</div></div>
-        <label class="field" style="margin-top:12px"><span class="label">Reason for the correction <span class="req">*</span></span>
-          <textarea class="textarea" data-bind="modal.data.reason" placeholder="Shared with the requester, e.g. The partner is a commercial company, so this is an Industry engagement.">${esc(d.reason)}</textarea></label>`;
+        <div class="notice ${missing.length ? 'warn' : 'neutral'} small" style="margin-top:12px">${icon(missing.length ? 'flag' : 'info')}<div>${missing.length ? `Saving sets the status to <strong>Action Required from Requester</strong> and reopens only: <strong>${missing.map((k) => esc(A.slotLabel(k))).join(', ')}</strong>.` : 'No new documents needed. The status stays the same and the requester is told in Conversation.'}</div></div>
+        <label class="field" style="margin-top:12px"><span class="label">Reason for the correction <span class="req">*</span> <span class="small muted" style="font-weight:400">Shown to the requester</span></span>
+          <textarea class="textarea" data-bind="modal.data.reason" placeholder="e.g. The partner is a commercial company, so this is an Industry engagement.">${esc(d.reason)}</textarea></label>`;
     },
     foot: () => `<button class="btn" data-act="close-modal">Cancel</button><button class="btn primary" data-act="classify-save">${icon('check')}Save correction</button>`,
   };
 
   M.close = {
     title: () => 'Close as Not Proceeding',
-    body: (d) => `<p class="muted">Use this when the requester withdraws, the partner declines, or Legal determines the agreement cannot proceed. Nothing is deleted: documents, versions, Conversation, Internal Legal Notes and audit history are all kept, and the requester can still view it.</p>
+    body: (d) => `<p class="muted">Nothing is deleted. Documents, versions, Conversation, Internal Legal Notes and audit history are kept, and the requester can still view the submission.</p>
       <fieldset style="margin-top:14px"><legend>Why is it not proceeding? <span class="req" style="color:var(--maroon)">*</span></legend><div class="choice-list">
         ${['Requester withdrew', 'Partner declined', 'Legal determined it cannot proceed'].map((o) => `<label class="choice ${d.kind === o ? 'selected' : ''}"><input type="radio" name="closekind" value="${o}" data-bind="modal.data.kind" data-live="modal" ${d.kind === o ? 'checked' : ''}><span>${o}</span></label>`).join('')}</div></fieldset>
       <label class="field" style="margin-top:12px"><span class="label">Closure reason <span class="req">*</span></span><textarea class="textarea" data-bind="modal.data.text" placeholder="What happened? The requester will see this reason.">${esc(d.text)}</textarea></label>
@@ -439,7 +440,7 @@
     if (b.length) { A.toast(b.join(' '), 'error'); return; }
     confirmBox({
       subId: id, title: 'Complete Legal Review?', ok: 'Complete Legal Review',
-      body: `<p>This records the <strong>Review Completed</strong> milestone. Next, Legal obtains the <strong>${esc(A.signatory(s))}</strong>'s signature.</p><p class="small muted" style="margin-top:8px">It does not create an Agreement Register record and is not the same as Fully Executed.</p>`,
+      body: `<p>This records <strong>Review Completed</strong>. Next, Legal obtains the <strong>${esc(A.signatory(s))}</strong>'s signature.</p><p class="small muted" style="margin-top:8px">It does not mean the agreement is signed, Fully Executed or registered.</p>`,
       fn: () => A.modalResult(A.actions.completeReview(id, rev(id)), 'Review completed — awaiting UniKL signature.') && after(id, { ok: true, rev: A.sub(id).rev }),
     });
   };
@@ -616,6 +617,16 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (UI.modal) { A.closeModal(); } else if (UI.drawer) { UI.drawer = false; A.renderDrawer(); }
+    }
+    if (e.key === 'Tab' && UI.modal) {
+      // Keep keyboard focus inside the open dialog.
+      const modal = document.querySelector('#modal-root .modal');
+      const items = modal ? [...modal.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled])')].filter((n) => n.offsetParent !== null) : [];
+      if (!items.length) return;
+      const first = items[0]; const last = items[items.length - 1];
+      if (!modal.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     }
   });
 

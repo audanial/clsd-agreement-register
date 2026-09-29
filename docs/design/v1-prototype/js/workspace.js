@@ -37,7 +37,6 @@
         <div class="ws-title"><div class="ws-id">${esc(s.id)} · ${esc(A.TYPE_NAMES[s.type])}</div><h1>${esc(s.title)}</h1>
           <div class="ws-meta">${headState} <span class="chip">${A.typeLabel(s)}</span> <span class="chip">${esc(s.category)} · ${esc(s.location)}</span> <span class="chip">${esc(A.campusShort(s.campus))}</span> ${A.pcCue()}</div>
         </div>
-        ${legal && s.lastHandler ? `<div class="small muted" style="text-align:right">Last handled by<br><strong style="color:var(--text)">${esc(A.personName(s.lastHandler))}</strong><div class="xsmall faint">Shared — any Legal user can act</div></div>` : ''}
       </div>`;
 
     const panel = legal ? legalPanel(s, u) : requesterPanel(s, u);
@@ -70,10 +69,7 @@
   function sidePanel(s, u) {
     const legal = A.isLegal(u);
     const req = A.user(s.requesterId);
-    return `${legal ? `<div class="card card-pad side-card"><h3>Who acts next</h3>
-        <div style="font-size:1.05rem">${A.nextActorHtml(s, u)}</div>
-        <p class="small muted" style="margin-top:6px">${esc(A.nextStepShort(s, legal))}</p></div>` : ''}
-      <div class="card card-pad side-card"><h3>Submission details</h3>
+    return `<div class="card card-pad side-card"><h3>Submission details</h3>
         <dl class="kv">
           <dt>Requester</dt><dd>${legal ? `${esc(req.name)}<div class="xsmall muted">${esc(req.title)}</div>` : 'You'}</dd>
           <dt>Campus / dept.</dt><dd>${esc(A.campusShort(s.campus))}</dd>
@@ -86,9 +82,10 @@
           <dt>LHDN stamping</dt><dd>${stampText(s)}</dd>
           <dt>Submitted</dt><dd>${A.fmt(s.submittedAt)}</dd>
           <dt>Last update</dt><dd>${A.fmt(s.updatedAt)}</dd>
+          ${legal ? `<dt>Last handled by</dt><dd>${s.lastHandler ? esc(A.personName(s.lastHandler)) : '<span class="faint">Not yet handled</span>'}<div class="xsmall muted">Information only</div></dd>` : ''}
           ${s.agreementId ? `<dt>Register record</dt><dd>${legal ? `<a href="#/register/${s.agreementId}">${esc(s.agreementId)}</a>` : esc(s.agreementId)}</dd>` : ''}
         </dl></div>
-      ${legal ? `<div class="notice neutral small">${icon('users')}<div>Shared queue: Nadia and Hana can both review and act on every submission. “Last handled by” is informational, not an assignment.</div></div>` : `<div class="notice neutral small">${icon('lock')}<div>Visible only to you and CLSD Legal. To withdraw, message Legal.</div></div>`}`;
+      ${legal ? `<div class="notice neutral small">${icon('users')}<div>Shared queue. Anyone in Legal can act on this submission.</div></div>` : `<div class="notice neutral small">${icon('lock')}<div>Visible only to you and CLSD Legal. To withdraw, message Legal.</div></div>`}`;
   }
   function stampText(s) {
     const st = A.stampingApplies(s);
@@ -321,25 +318,25 @@
     const reqBtn = `<button class="btn" data-act="open-request" data-sub="${s.id}">${icon('message')}Request clarification or revision</button>`;
     switch (s.status) {
       case 'pending_review':
-        return `<div class="card card-pad next-card"><div class="kicker">Next step · Legal</div><h2>Start the Legal review</h2>
-          <p class="muted" style="margin-top:6px">The intake package is complete. Starting the review tells the requester that Legal is working on it.</p>
+        return `<div class="card card-pad next-card"><h2>Start the Legal review</h2>
+          <p class="muted" style="margin-top:6px">The requester will see that Legal has started.</p>
           <div class="actions"><button class="btn primary lg" data-act="start-review" data-sub="${s.id}" data-rev="${rev}">${icon('arrow')}Start Review</button></div>
           ${secondary([classify, close])}</div>`;
       case 'in_review': {
         const b = A.reviewBlockers(s);
-        return `<div class="card card-pad next-card"><div class="kicker">Next step · Legal</div><h2>Review the contents and supporting documents</h2>
-          <p class="muted" style="margin-top:6px">When the contents are approved, complete the review. Legal then obtains the <strong>${esc(A.signatory(s))}</strong>'s signature. Completing the review does not create a Register record.</p>
-          ${b.length ? `<ul class="blockers">${b.map((x) => `<li class="no">${icon('alert')}${esc(x)}</li>`).join('')}</ul>` : ''}
-          <div class="actions"><button class="btn primary lg" data-act="complete-review" data-sub="${s.id}" data-rev="${rev}" ${b.length ? 'aria-disabled="true"' : ''}>${icon('check')}Complete Legal Review</button>${reqBtn}</div>
+        return `<div class="card card-pad next-card"><h2>Review the contents and documents</h2>
+          <p class="muted" style="margin-top:6px">Next: obtain the <strong>${esc(A.signatory(s))}</strong>'s signature.</p>
+          ${b.length ? `<ul class="blockers" id="review-blockers" aria-label="Why Complete Legal Review is unavailable">${b.map((x) => `<li class="no">${icon('alert')}${esc(x)}</li>`).join('')}</ul>` : ''}
+          <div class="actions"><button class="btn primary lg" data-act="complete-review" data-sub="${s.id}" data-rev="${rev}" ${b.length ? 'aria-disabled="true" aria-describedby="review-blockers"' : ''}>${icon('check')}Complete Legal Review</button>${reqBtn}</div>
           ${secondary([classify, close])}</div>`;
       }
       case 'action_required': {
         const req = A.openRequest(s);
         const r = A.responseReadiness(s);
-        return `<div class="card card-pad next-card requester"><div class="kicker">Waiting for Requester</div><h2>${req.request.phase === 'final' ? 'Final package returned for correction' : 'Request sent to the requester'}</h2>
-          <p class="muted" style="margin-top:6px">Sent by ${esc(A.personName(req.by, true))} on ${A.fmt(req.at)}. The submission returns to ${req.request.phase === 'final' ? 'Final Verification' : 'In Review'} when ${esc(A.personName(s.requesterId))} selects Submit Response.</p>
+        return `<div class="card card-pad next-card requester"><h2>${req.request.phase === 'final' ? 'Final package returned for correction' : 'Waiting for the requester\'s response'}</h2>
+          <p class="muted" style="margin-top:6px">${esc(A.personName(req.by, true))} · ${A.fmt(req.at)}. Returns to ${req.request.phase === 'final' ? 'Final Verification' : 'In Review'} when ${esc(A.personName(s.requesterId))} selects Submit Response.</p>
           <div class="instruction" style="margin-top:10px">${esc(req.text)}</div>
-          <ul class="blockers">${req.request.clarify ? `<li class="no">${icon('clock')}Written answer — not yet submitted</li>` : ''}${req.request.slots.map((k) => `<li class="${r.done.includes(k) ? 'ok' : 'no'}">${icon(r.done.includes(k) ? 'check' : 'clock')}${esc(A.slotLabel(k))} — ${r.done.includes(k) ? 'new version uploaded (response not yet submitted)' : 'waiting for new file'}</li>`).join('')}</ul>
+          <ul class="blockers">${req.request.clarify ? `<li class="no">${icon('clock')}Written answer: waiting</li>` : ''}${req.request.slots.map((k) => `<li class="${r.done.includes(k) ? 'ok' : 'no'}">${icon(r.done.includes(k) ? 'check' : 'clock')}${esc(A.slotLabel(k))}: ${r.done.includes(k) ? 'new version uploaded, not yet submitted' : 'waiting for new file'}</li>`).join('')}</ul>
           ${secondary([close])}</div>`;
       }
       case 'review_completed': {
@@ -482,29 +479,30 @@
       else if (!v && x.execution) chip = '<span class="chip">Execution stage</span>';
       else if (!v) chip = '<span class="badge tone-red">Missing</span>';
       else if (rule.ok) chip = '<span class="badge tone-blue">Upload open</span>';
-      else chip = `<span class="chip">${icon('lock')}Locked</span>`;
-      const vMeta = v ? `v${sl.versions.length} · ${esc(v.label)}${(s.finalAccepted && s.finalAccepted[k] === sl.versions.length) ? (k === 'agreement' ? ' · <span class="badge tone-green plain">Final Executed</span>' : ' · <span class="badge tone-green plain">Verified</span>') : ''}<br>${A.size(v.sizeMB)} · ${esc(A.personName(v.by, true))} · ${A.fmt(v.at)}` : '';
+      else if (!sharedLock) chip = `<span class="chip">${icon('lock')}Locked</span>`;
+      const older = Math.max(0, sl.versions.length - 1);
+      const vMeta = v ? `${older ? 'Current: ' : ''}v${sl.versions.length} · ${esc(v.label)}${(s.finalAccepted && s.finalAccepted[k] === sl.versions.length) ? (k === 'agreement' ? ' · <span class="badge tone-green plain">Final Executed</span>' : ' · <span class="badge tone-green plain">Verified</span>') : ''}<br>${A.size(v.sizeMB)} · ${esc(A.personName(v.by, true))} · ${A.fmt(v.at)}` : '';
       return `<div class="doc ${reopened ? 'reopened' : ''} ${x.retired ? 'retired' : ''}">
-        <div><div class="doc-name">${esc(def.label)} ${chip}</div><div class="doc-help">${esc(x.undecided ? 'Only needed if Legal decides this Addendum requires LHDN stamping. ' + def.help : def.help)}</div></div>
+        <div><div class="doc-name">${esc(def.label)} ${chip}</div>${v && !x.undecided ? '' : `<div class="doc-help">${esc(x.undecided ? 'Only needed if Legal decides this Addendum requires LHDN stamping. ' + def.help : def.help)}</div>`}</div>
         <div>${v ? `<div class="file">${A.fileIco(v.ext)}<div><div class="file-name">${esc(v.filename)}</div><div class="file-meta">${vMeta}</div></div></div>` : `<div class="file">${A.fileIco('')}<div class="small muted" style="padding-top:10px">No file</div></div>`}</div>
         <div class="doc-actions">
           ${v ? `<button class="btn sm" data-act="download" data-sub="${s.id}" data-key="${k}" data-n="${sl.versions.length}">${icon('download')}Download</button>` : ''}
           ${rule.ok ? `<button class="btn sm primary" data-act="upload" data-sub="${s.id}" data-key="${k}">${icon('upload')}${esc(rule.verb)}</button>` : (!x.retired && !(sharedLock && rule.reason === sharedLock && !x.execution) ? `<div class="lock-note">${icon('lock')}<span>${esc(rule.reason)}</span></div>` : '')}
-          ${sl.versions.length ? `<button class="btn sm ghost" data-act="toggle-versions" data-sub="${s.id}" data-key="${k}" aria-expanded="${!!expanded}">${icon('history')}${expanded ? 'Hide' : 'Show'} version history (${sl.versions.length})</button>` : ''}
+          ${older ? `<button class="btn sm ghost" data-act="toggle-versions" data-sub="${s.id}" data-key="${k}" aria-expanded="${!!expanded}" aria-controls="versions-${s.id}-${k}">${icon('history')}${expanded ? 'Hide' : 'Show'} older versions (${older})</button>` : ''}
         </div>
-        ${recent ? `<div class="notice warn access-warn small">${icon('eye_off')}<div>${esc(A.personName(recent.by))} (Legal) downloaded ${esc(def.label)} v${recent.n} ${A.rel(recent.at)} and may still be reviewing it. You can continue — this is only a heads-up.</div></div>` : ''}
+        ${recent ? `<div class="notice info access-warn small" role="note">${icon('eye')}<div>${esc(A.personName(recent.by))} (Legal) downloaded v${recent.n} ${A.rel(recent.at)}. You can continue. This is a heads-up only, and nothing is locked or assigned.</div></div>` : ''}
         ${err ? `<div class="notice error upload-error small">${icon('alert')}<div><strong>Upload failed:</strong> ${esc(err)} ${v ? `The current file (v${sl.versions.length}) is unchanged.` : ''} <button class="link-btn" data-act="upload" data-sub="${s.id}" data-key="${k}">Try again</button></div></div>` : ''}
-        ${expanded && sl.versions.length ? A.versionTable(s, k, u) : ''}
+        ${expanded && older ? `<div id="versions-${s.id}-${k}" style="grid-column:1 / -1">${A.versionTable(s, k, u)}</div>` : ''}
       </div>`;
     };
     return `<div class="card">
-      <div class="card-head">${A.pcCue()}<span class="small muted" style="flex:1">Shared with the submitting requester and CLSD Legal only. Every download is recorded.</span></div>
+      <div class="card-head">${A.pcCue()}<span class="small muted" style="flex:1">Visible only to the requester and CLSD Legal. Downloads are recorded.</span></div>
       <div class="doc-group-title">Intake documents · ${esc(s.category)} checklist (${intake.length})</div>
       ${sharedLock ? `<div class="notice neutral small" style="margin:12px 18px 2px">${icon('lock')}<div>${esc(sharedLock)}</div></div>` : ''}
       <div class="doc-list">${intake.map(row).join('')}</div>
       ${retired.length ? `<div class="doc-group-title">No longer required after classification change — kept with history</div><div class="doc-list">${retired.map(row).join('')}</div>` : ''}
       ${exec.length ? `<div class="doc-group-title">Execution documents · separate from the Agreement</div><div class="doc-list">${exec.map(row).join('')}</div>` : ''}
-      <div class="card-foot xsmall muted">Review documents: PDF or Word (.docx), up to 20 MB. Signed agreements and stamp certificates: PDF only. Replacing a file creates a new version; earlier versions are never overwritten. Prototype files are simulated.</div>
+      <div class="card-foot xsmall muted">PDF or Word (.docx), up to 20 MB. Signed agreements and stamp certificates: PDF only. Earlier versions are always kept.</div>
     </div>`;
   }
 
