@@ -56,7 +56,7 @@
     body: (d) => {
       let accept; let context;
       if (d.mode === 'new') {
-        accept = ['pdf', 'docx'];
+        accept = A.REVIEW_TYPES;
         context = UI.newForm.files[d.key] ? `This replaces <strong>${esc(UI.newForm.files[d.key].filename)}</strong> in your form. Before submission, files can be replaced freely.` : 'Attach this document to your submission.';
       } else {
         const s = A.sub(d.subId);
@@ -72,7 +72,7 @@
       d.files = files;
       return `<div class="notice info small" style="margin-bottom:12px">${icon('info')}<div><strong>Prototype:</strong> choose a fictional sample file. Nothing is read from your computer — please don't use real agreements for this review.</div></div>
         <p>${context}</p>
-        <p class="small muted" style="margin:6px 0 12px">Accepted: ${accept.length === 1 ? '<strong>PDF only</strong>' : '<strong>PDF or Word (.docx)</strong>'}, up to 20 MB. Not accepted: images, ZIP archives, macro-enabled Word files, executables.</p>
+        <p class="small muted" style="margin:6px 0 12px">${esc(A.acceptText(accept))}</p>
         <div class="choice-list" role="radiogroup" aria-label="Sample files">${files.map((f, i) => `<label class="choice ${d.pick === i ? 'selected' : ''}"><input type="radio" name="sample" data-act="upload-pick" data-i="${i}" ${d.pick === i ? 'checked' : ''}>
           ${A.fileIco(f.filename.split('.').pop())}<div><div class="file-name">${esc(f.filename)}</div><div class="file-meta">${A.size(f.sizeMB)} · ${esc(f.note)}</div></div></label>`).join('')}</div>`;
     },
@@ -254,7 +254,7 @@
       ], J('nadia', '#/sub/SUB-2026-0041/overview', 'Start as Nadia')],
       ['2 · Industry Local MOA — targeted replacement, certificate', 'SUB-2026-0038', [
         'As Aisyah: open SUB-2026-0038. Only the Due Diligence Form is reopened; five documents stay locked.',
-        'Try a sample that fails (image, ZIP or 24.6 MB) — the current file is unchanged. Then upload a valid PDF, answer the clarification and <strong>Submit Response</strong>.',
+        'Try the oversized sample (24.6 MB) — it is rejected and the current file is unchanged. Then upload a valid PDF or Word file, answer the clarification and <strong>Submit Response</strong>.',
         'Documents tab → Due Diligence Form → version history shows v1 and v2.',
         'As Legal: <strong>Complete Legal Review</strong> (CEO signs Industry agreements) → upload UniKL-signed PDF → send to requester.',
         'As Aisyah: upload the both-parties-signed PDF → <strong>Submit signed agreement &amp; continue to stamping</strong> → upload the standalone LHDN certificate (its own slot) → submit.',
@@ -396,7 +396,7 @@
     const d = UI.modal.data;
     const file = d.files[d.pick];
     if (d.mode === 'new') {
-      const err = A.validateFile(file, ['pdf', 'docx']);
+      const err = A.validateFile(file, A.REVIEW_TYPES);
       if (err) { UI.uploadErrors['new:' + d.key] = err; UI.modal.error = `Upload failed: ${err} ${UI.newForm.files[d.key] ? 'Your current file is unchanged.' : ''} Choose another file.`; A.render(); return; }
       const hadFile = !!UI.newForm.files[d.key];
       UI.newForm.files[d.key] = { filename: file.filename, sizeMB: file.sizeMB };
