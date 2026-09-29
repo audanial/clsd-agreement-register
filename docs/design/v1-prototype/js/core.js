@@ -195,13 +195,20 @@
     return locked('Locked at this stage.');
   }
 
+  // The single format check for every upload route. `accept` is REVIEW_TYPES or FINAL_TYPES; anything not on that list is rejected,
+  // so the named hints below only make the message friendlier. Legacy .doc is never accepted.
+  const acceptText = (accept) => (accept.length === 1 ? 'PDF only' : 'PDF or Word (.docx)') + `, up to ${MAX_MB} MB.`;
   function validateFile(file, accept) {
-    const ext = file.filename.split('.').pop().toLowerCase();
+    const name = file && typeof file.filename === 'string' ? file.filename : '';
+    const dot = name.lastIndexOf('.');
+    const ext = dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
     if (['jpg', 'jpeg', 'png', 'heic'].includes(ext)) return 'Standalone images are not accepted. Scan the document to PDF instead.';
     if (['zip', 'rar', '7z'].includes(ext)) return 'Archive files (ZIP) are not accepted. Upload each document in its own slot.';
     if (['docm', 'dotm'].includes(ext)) return 'Macro-enabled Word files (.docm) are not accepted. Save as .docx or PDF.';
+    if (ext === 'doc') return 'Legacy Word (.doc) files are not accepted. Save as .docx or PDF.';
     if (['exe', 'bat', 'msi'].includes(ext)) return 'Executable files are not accepted.';
     if (!accept.includes(ext)) return accept.length === 1 ? 'This stage needs a PDF file. Word files are accepted only during review.' : 'Only PDF or Word (.docx) files are accepted.';
+    if (typeof file.sizeMB !== 'number' || !Number.isFinite(file.sizeMB) || file.sizeMB < 0) return 'The file size could not be read.';
     if (file.sizeMB > MAX_MB) return `This file is ${size(file.sizeMB)}. The limit is ${MAX_MB} MB per file.`;
     return null;
   }
@@ -257,9 +264,17 @@
         if (!['title', 'partner', 'approxDate', 'campus'].every((k) => nf[k] && nf[k].trim())) return fail('Complete the original agreement details.');
       } else return fail('Choose the original agreement, or Agreement not found.');
     }
+    // Every required file must exist and pass the shared format and size check before anything is created or saved.
+    if (!['Academic', 'Industry'].includes(f.category) || !['Local', 'International'].includes(f.location)) return fail('Choose the engagement category and partner location.');
+    const req = requiredIntake(f.category, f.location);
+    for (const k of req) {
+      const file = f.files && f.files[k];
+      if (!file) return fail(`${slotLabel(k)}: attach this document. Accepted: ${acceptText(REVIEW_TYPES)}`);
+      const bad = validateFile(file, REVIEW_TYPES);
+      if (bad) return fail(`${slotLabel(k)}: ${bad} Accepted: ${acceptText(REVIEW_TYPES)}`);
+    }
     tick(2);
     const idn = 'SUB-2026-' + String(S.nextSub++).padStart(4, '0');
-    const req = requiredIntake(f.category, f.location);
     const slots = {};
     req.forEach((k) => {
       const file = f.files[k];
@@ -695,7 +710,7 @@
     requiredIntake, stampingApplies, currentVersion, versionNo, slotList,
     nextActor, nextActorLabel, canView, mySubmissions, unreadCount, totalUnread, accessibleOriginals,
     openRequest, recentAccess, uploadRule, validateFile, responseReadiness, reviewBlockers, finalBlockers,
-    registerBlockers, registerFieldErrors, unikSignedVersion, signedThisStage, certThisStage, CLOSABLE, MAX_MB,
+    registerBlockers, registerFieldErrors, unikSignedVersion, signedThisStage, certThisStage, CLOSABLE, MAX_MB, REVIEW_TYPES, FINAL_TYPES, acceptText,
     actions,
   });
 })();

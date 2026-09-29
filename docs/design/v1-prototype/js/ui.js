@@ -302,15 +302,10 @@
 
   // ---------- simulated files ----------
   function sampleFiles(baseName, accept) {
-    const finalOnly = accept.length === 1;
-    const list = [
-      { filename: `${baseName}.pdf`, sizeMB: 1.4, note: 'PDF' },
-      { filename: `${baseName}.docx`, sizeMB: 0.6, note: finalOnly ? 'Word — not accepted at this stage' : 'Word document' },
-      { filename: `${baseName}_photo.jpg`, sizeMB: 3.1, note: 'Standalone image' },
-      { filename: `${baseName}_bundle.zip`, sizeMB: 4.8, note: 'ZIP archive' },
-      { filename: `${baseName}.docm`, sizeMB: 0.7, note: 'Macro-enabled Word' },
-      { filename: `${baseName}_high_res.pdf`, sizeMB: 24.6, note: 'Over 20 MB' },
-    ];
+    // Only formats allowed at this stage are offered. The oversized PDF stays so the 20 MB rule can be demonstrated.
+    const list = [{ filename: `${baseName}.pdf`, sizeMB: 1.4, note: 'PDF' }];
+    if (accept.includes('docx')) list.push({ filename: `${baseName}.docx`, sizeMB: 0.6, note: 'Word document' });
+    list.push({ filename: `${baseName}_high_res.pdf`, sizeMB: 24.6, note: 'Over 20 MB' });
     return list;
   }
   A.sampleFiles = sampleFiles;

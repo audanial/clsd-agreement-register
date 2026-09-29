@@ -246,7 +246,7 @@
 
           <div class="card" style="margin-top:16px" id="checklist-card">
             <div class="card-head"><h2 style="flex:1">3. Required documents</h2>${f.category ? `<span class="chip">${esc(f.category)} checklist · ${req.length || 6} required</span>` : ''}${A.pcCue()}</div>
-            <div class="notice neutral" style="margin:14px 16px 4px;border-radius:6px">${icon('info')}<div><strong>PDF or DOCX, up to 20 MB each.</strong> Use fictional files only in this prototype.</div></div>
+            <div class="notice neutral" style="margin:14px 16px 4px;border-radius:6px">${icon('info')}<div><strong>PDF or Word (.docx), up to 20 MB.</strong> Use fictional files only in this prototype.</div></div>
             ${checklistItems}
           </div>
         </div>
