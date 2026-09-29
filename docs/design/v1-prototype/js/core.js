@@ -247,6 +247,16 @@
   actions.createSubmission = function (f) {
     const u = me();
     if (u.role !== 'requester') return fail('Only Requesting Staff create submissions.');
+    if (f.type === 'ADDENDUM') {
+      // Checked here as well as in the form: the original must be one this requester may select, or a complete not-found description.
+      if (!f.purpose || !f.purpose.trim()) return fail('Describe what the Addendum changes.');
+      if (f.addMode === 'selected') {
+        if (!accessibleOriginals(u).some((r) => r.id === f.originalId)) return fail('Choose an original agreement from your own registered submissions, or Agreement not found.');
+      } else if (f.addMode === 'not_found') {
+        const nf = f.notFound || {};
+        if (!['title', 'partner', 'approxDate', 'campus'].every((k) => nf[k] && nf[k].trim())) return fail('Complete the original agreement details.');
+      } else return fail('Choose the original agreement, or Agreement not found.');
+    }
     tick(2);
     const idn = 'SUB-2026-' + String(S.nextSub++).padStart(4, '0');
     const req = requiredIntake(f.category, f.location);
@@ -565,21 +575,27 @@
   };
 
   actions.confirmLink = function (id, agrId, rev) {
+    if (!isLegal(me())) return fail('Only Legal or Admin can do this.');
     const s0 = sub(id);
     if (!s0 || s0.type !== 'ADDENDUM') return fail('Not an Addendum.');
     if (['registered', 'not_proceeding'].includes(s0.status)) return fail('The original-agreement link can no longer be changed.');
     if (!agr(agrId)) return fail('Choose an existing Register record.');
+    // Re-confirming the record that is already confirmed changes nothing, so it records nothing.
+    if (s0.addendum.linkStatus === 'confirmed' && s0.addendum.originalId === agrId) return fail(`${agrId} is already the confirmed original.`);
     const { s, u, err } = begin(id, rev, true);
     if (err) return err;
-    const was = s.addendum.linkStatus;
+    const was = s.addendum.linkStatus; const wasId = s.addendum.originalId;
     s.addendum.originalId = agrId; s.addendum.linkStatus = 'confirmed'; s.addendum.confirmedBy = u.id; s.addendum.confirmedAt = now();
-    log(s, was === 'unresolved' ? `Resolved original agreement — linked to ${agrId}` : `Confirmed original agreement ${agrId}`);
+    // Choosing a different record than the one already linked (requester's pick or Legal's earlier confirmation) is a change; name both.
+    log(s, was === 'unresolved' ? `Resolved original agreement — linked to ${agrId}` : wasId && wasId !== agrId ? `Changed original agreement from ${wasId} to ${agrId}` : `Confirmed original agreement ${agrId}`);
     return commit(s);
   };
 
   actions.decideStamping = function (id, required, rev) {
+    if (!isLegal(me())) return fail('Only Legal or Admin can do this.');
     const s0 = sub(id);
     if (!s0 || s0.type !== 'ADDENDUM') return fail('Stamping is decided explicitly only for Addendums.');
+    if (s0.addendum && s0.addendum.stampingRequired === required) return fail('That is already the recorded decision.');
     if (!['pending_review', 'in_review', 'action_required', 'review_completed', 'awaiting_partner'].includes(s0.status)) return fail('The stamping decision is locked once the signed Addendum has been submitted.');
     const { s, u, err } = begin(id, rev, true);
     if (err) return err;

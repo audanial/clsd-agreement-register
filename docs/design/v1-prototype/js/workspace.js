@@ -405,36 +405,43 @@
     const legal = A.isLegal(u);
     const ad = s.addendum;
     const orig = ad.originalId ? A.agr(ad.originalId) : null;
-    const editable = !['registered', 'not_proceeding'].includes(s.status);
+    const linkLocked = ['registered', 'not_proceeding'].includes(s.status);
     const stampEditable = ['pending_review', 'in_review', 'action_required', 'review_completed', 'awaiting_partner'].includes(s.status);
-    const origBlock = orig ? `<div class="slot-row" style="margin-top:8px"><div><div class="strong">${esc(orig.title)} <span class="faint">· ${esc(orig.id)}</span></div>
-        <div class="small muted">${esc(orig.partner)} · ${esc(orig.type)}${orig.moaSubtype ? ` (subtype: ${esc(orig.moaSubtype)} — stays with the original)` : ''} · signed ${A.fmtDate(orig.dateSigned)} · ${esc(A.campusShort(orig.campus))}</div></div>
+    const sect = (title, body) => `<div><h4 class="small strong" style="margin-bottom:6px">${title}</h4>${body}</div>`;
+    const origBlock = orig ? `<div class="slot-row" style="margin-top:8px"><div style="min-width:0;overflow-wrap:anywhere"><div class="strong">${esc(orig.title)} <span class="faint">· ${esc(orig.id)}</span></div>
+        <div class="small muted">${esc(orig.partner)} · ${esc(orig.type)}${orig.moaSubtype ? ` · ${esc(orig.moaSubtype)}` : ''} · signed ${A.fmtDate(orig.dateSigned)} · ${esc(A.campusShort(orig.campus))}</div></div>
         ${legal ? `<a class="btn sm ghost" href="#/register/${orig.id}">View</a>` : ''}</div>` : '';
+    const lockedNote = linkLocked ? `<p class="small muted" style="margin-top:8px">${icon('lock')} Locked. The link can't change once the submission is ${s.status === 'registered' ? 'Registered' : 'Not Proceeding'}.</p>` : '';
     let linkHtml;
     if (ad.linkStatus === 'confirmed') {
-      linkHtml = `<span class="badge tone-green">Original confirmed</span> <span class="small muted">by ${esc(A.personName(ad.confirmedBy, true))}, ${A.fmt(ad.confirmedAt)}</span>${origBlock}
-        ${legal && editable ? `<div style="margin-top:8px"><button class="btn sm ghost" data-act="open-link" data-sub="${s.id}">Change linked original</button></div>` : ''}`;
+      linkHtml = `<div class="row-wrap"><span class="badge tone-green">Confirmed</span><span class="small muted">${esc(A.personName(ad.confirmedBy, true))} · ${A.fmt(ad.confirmedAt)}</span></div>${origBlock}
+        ${legal && !linkLocked ? `<div style="margin-top:8px"><button class="btn sm ghost" data-act="open-link" data-sub="${s.id}">Change original</button></div>` : ''}${lockedNote}`;
     } else if (ad.linkStatus === 'requester_selected') {
-      linkHtml = `<span class="badge tone-blue">Selected by requester — ${legal ? 'confirm' : 'Legal will confirm'}</span>${origBlock}
-        ${legal ? `<div class="row-wrap" style="margin-top:8px"><button class="btn sm primary" data-act="confirm-link" data-sub="${s.id}" data-agr="${ad.originalId}" data-rev="${UI.viewRev[s.id]}">${icon('link')}Confirm link</button><button class="btn sm" data-act="open-link" data-sub="${s.id}">Choose a different record</button></div>` : ''}`;
+      linkHtml = `<div class="row-wrap"><span class="badge tone-blue">Selected by ${legal ? 'requester' : 'you'}</span><span class="small muted">${legal ? 'Not yet confirmed' : 'Legal will confirm'}</span></div>${origBlock}
+        ${legal && !linkLocked ? `<div class="row-wrap" style="margin-top:8px"><button class="btn sm primary" data-act="confirm-link" data-sub="${s.id}" data-agr="${ad.originalId}" data-rev="${UI.viewRev[s.id]}">${icon('link')}Confirm original</button><button class="btn sm" data-act="open-link" data-sub="${s.id}">Choose another agreement</button></div>` : ''}${lockedNote}`;
     } else {
       const nf = ad.notFound || {};
-      linkHtml = `<div class="notice warn" style="margin-top:4px">${icon('alert')}<div><strong>Unresolved original.</strong> ${legal ? 'The requester could not find or access the original agreement. Registration is blocked until Legal links it to an existing Register record.' : 'You told Legal you cannot find or access the original agreement. Legal will find and link it.'}</div></div>
-        <dl class="kv small" style="margin-top:10px"><dt>Title given</dt><dd>${esc(nf.title || '—')}</dd><dt>Partner</dt><dd>${esc(nf.partner || '—')}</dd><dt>Approximate date</dt><dd>${esc(nf.approxDate || '—')}</dd><dt>Campus / dept.</dt><dd>${esc(nf.campus || '—')}</dd><dt>Other details</dt><dd>${esc(nf.details || '—')}</dd></dl>
-        ${legal ? `<div style="margin-top:10px"><button class="btn sm primary" data-act="open-link" data-sub="${s.id}">${icon('search')}Find in Agreement Register</button></div>
-          <p class="xsmall muted" style="margin-top:6px">If the original is not in the Register at all, add it through the existing Register process first. The portal never creates an original record automatically.</p>` : ''}`;
+      linkHtml = `<div class="notice warn">${icon('alert')}<div><strong>Original not found.</strong> ${legal ? 'Registration is blocked until you link it to a Register record.' : 'Legal will find and link it.'}</div></div>
+        <dl class="kv small" style="margin-top:10px"><dt>Title given</dt><dd style="overflow-wrap:anywhere">${esc(nf.title || '—')}</dd><dt>Partner</dt><dd style="overflow-wrap:anywhere">${esc(nf.partner || '—')}</dd><dt>Approximate date</dt><dd>${esc(nf.approxDate || '—')}</dd><dt>Campus / dept.</dt><dd>${esc(nf.campus || '—')}</dd><dt>Other details</dt><dd style="overflow-wrap:anywhere">${esc(nf.details || '—')}</dd></dl>
+        ${legal && !linkLocked ? `<div style="margin-top:10px"><button class="btn sm primary" data-act="open-link" data-sub="${s.id}">${icon('search')}Find original agreement</button></div>
+          <p class="xsmall muted" style="margin-top:6px">Not in the Register? Add it through the existing Register process first. Nothing is created here.</p>` : ''}${lockedNote}`;
     }
     const st = ad.stampingRequired;
-    const stampHtml = st == null
-      ? `<div class="notice warn">${icon('stamp')}<div><strong>Stamping decision not recorded.</strong> ${legal ? 'Record explicitly whether LHDN stamping is required. It is never assumed, and review cannot be completed without it.' : 'Legal will decide whether this Addendum needs LHDN stamping.'}</div></div>
-         ${legal && stampEditable ? `<div class="row-wrap" style="margin-top:8px"><button class="btn sm" data-act="open-stamping" data-sub="${s.id}">${icon('stamp')}Record stamping decision</button></div>` : ''}`
-      : `<div class="row"><span class="badge ${st ? 'tone-amber' : 'tone-grey'}">${st ? 'LHDN stamping required' : 'LHDN stamping not required'}</span><span class="small muted">Decided by ${esc(A.personName(ad.stampingBy, true))}, ${A.fmt(ad.stampingAt)}</span>
-         ${legal && stampEditable ? `<button class="btn sm ghost" data-act="open-stamping" data-sub="${s.id}">Change</button>` : ''}</div>`;
-    return `<div class="card" style="margin-top:16px"><div class="card-head">${icon('link')}<h3 style="flex:1">Addendum — original agreement &amp; stamping</h3><span class="chip">ADDENDUM · standalone type</span></div>
+    let stampHtml;
+    if (st == null) {
+      stampHtml = `<div class="notice warn">${icon('stamp')}<div><strong>Not decided.</strong> ${legal ? 'Review can\'t be completed until you decide.' : 'Legal will decide whether stamping is needed.'}</div></div>
+         ${legal && stampEditable ? `<div style="margin-top:8px"><button class="btn sm" data-act="open-stamping" data-sub="${s.id}">${icon('stamp')}Record decision</button></div>` : ''}`;
+    } else {
+      stampHtml = `<div class="row-wrap"><span class="badge ${st ? 'tone-amber' : 'tone-grey'}">Stamping ${st ? 'required' : 'not required'}</span><span class="small muted">${esc(A.personName(ad.stampingBy, true))} · ${A.fmt(ad.stampingAt)}</span>
+         ${legal && stampEditable ? `<button class="btn sm ghost" data-act="open-stamping" data-sub="${s.id}">Change decision</button>` : ''}</div>
+         ${!legal ? `<p class="small muted" style="margin-top:6px">${st ? 'After both parties sign, you upload the LHDN stamp certificate.' : 'The signed Addendum goes straight to Legal for final verification.'}</p>` : ''}
+         ${!stampEditable ? `<p class="small muted" style="margin-top:6px">${icon('lock')} Locked once the signed Addendum is submitted.</p>` : ''}`;
+    }
+    return `<div class="card" style="margin-top:16px"><div class="card-head">${icon('link')}<h3 style="flex:1">Addendum</h3></div>
       <div class="card-body stack">
-        <div><div class="small strong">Purpose of Addendum</div><p style="margin-top:4px">${esc(ad.purpose)}</p></div>
-        <div><div class="small strong" style="margin-bottom:6px">Original agreement</div>${linkHtml}</div>
-        <div><div class="small strong" style="margin-bottom:6px">LHDN stamping</div>${stampHtml}</div>
+        ${sect('Purpose', `<p style="overflow-wrap:anywhere">${esc(ad.purpose)}</p>`)}
+        ${sect('Original agreement', linkHtml)}
+        ${sect('LHDN stamping', stampHtml)}
       </div></div>`;
   }
 

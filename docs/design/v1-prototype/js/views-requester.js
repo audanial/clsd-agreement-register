@@ -103,7 +103,13 @@
     c.push({ ok: !!f.type, label: 'Agreement type', field: 'type' });
     if (f.type === 'ADDENDUM') {
       const nf = f.notFound;
-      c.push({ ok: (f.addMode === 'selected' && !!f.originalId) || (f.addMode === 'not_found' && !!nf.title.trim() && !!nf.partner.trim() && !!nf.approxDate.trim() && !!nf.campus.trim()), label: 'Original agreement (or its identifying details)', field: 'original' });
+      c.push({ ok: (f.addMode === 'selected' && !!f.originalId) || f.addMode === 'not_found', label: 'Original agreement', field: 'original' });
+      if (f.addMode === 'not_found') {
+        c.push({ ok: !!nf.title.trim(), label: 'Original agreement title', field: 'nf-title' });
+        c.push({ ok: !!nf.partner.trim(), label: 'Original agreement partner', field: 'nf-partner' });
+        c.push({ ok: !!nf.approxDate.trim(), label: 'Original agreement approximate date', field: 'nf-approxDate' });
+        c.push({ ok: !!nf.campus.trim(), label: 'Original agreement campus or department', field: 'nf-campus' });
+      }
       c.push({ ok: !!f.purpose.trim(), label: 'Purpose of Addendum', field: 'purpose' });
     }
     const req = A.requiredIntake(f.category, f.location);
@@ -123,6 +129,18 @@
     if (!f.tried) return '';
     const c = checks.find((x) => x.field === key);
     return c && !c.ok ? 'invalid' : '';
+  }
+
+  // Addendum fields: a specific inline message tied to the field, so the first invalid one can take focus.
+  function addErr(f, key, checks, msg) {
+    if (!f.tried) return '';
+    const c = checks.find((x) => x.field === key);
+    return c && !c.ok ? `<div class="error" id="err-${key}">${icon('alert')}${esc(msg)}</div>` : '';
+  }
+  function addAttrs(f, key, checks, hintId) {
+    const bad = f.tried && checks.some((x) => x.field === key && !x.ok);
+    const desc = [hintId, bad ? `err-${key}` : ''].filter(Boolean).join(' ');
+    return `id="${key}" data-live="rerender" ${bad ? 'aria-invalid="true"' : ''} ${desc ? `aria-describedby="${desc}"` : ''}`;
   }
 
   function seg(name, options, value, bind) {
@@ -157,33 +175,32 @@
 
     const addendum = f.type !== 'ADDENDUM' ? '' : `
       <div class="card" style="margin-top:16px" id="addendum-section">
-        <div class="card-head"><h2 style="flex:1">Addendum details</h2><span class="chip">ADDENDUM is a standalone type</span></div>
+        <div class="card-head"><h2 style="flex:1">Addendum details</h2></div>
         <div class="card-body stack">
-          <p class="muted small">An Addendum changes an existing agreement and is read together with it. Tell Legal which agreement it modifies.</p>
-          <fieldset class="field ${invalid(f, 'original', checks)}"><legend>Original agreement <span class="req">*</span></legend>
-            <div class="choice-list">
-              ${originals.map((r) => `<label class="choice ${f.addMode === 'selected' && f.originalId === r.id ? 'selected' : ''}">
-                  <input type="radio" name="orig" data-act="pick-original" data-id="${r.id}" ${f.addMode === 'selected' && f.originalId === r.id ? 'checked' : ''}>
-                  <div><div class="strong">${esc(r.title)} <span class="faint">· ${esc(r.id)}</span></div>
-                  <div class="small muted">${esc(r.partner)} · ${esc(r.type)}${r.moaSubtype ? ' · subtype: ' + esc(r.moaSubtype) : ''} · signed ${A.fmtDate(r.dateSigned)}</div></div></label>`).join('')}
+          <fieldset class="field ${invalid(f, 'original', checks)}"><legend id="original-legend">Original agreement <span class="req">*</span></legend>
+            <div class="hint" id="original-hint" style="margin:0 0 8px">The agreement this Addendum changes. Only agreements from your own registered submissions are listed.</div>
+            <div class="choice-list" role="radiogroup" aria-labelledby="original-legend" aria-describedby="original-hint${f.tried && checks.some((x) => x.field === 'original' && !x.ok) ? ' err-original' : ''}" ${f.tried && checks.some((x) => x.field === 'original' && !x.ok) ? 'aria-invalid="true"' : ''}>
+              ${originals.map((r, i) => `<label class="choice ${f.addMode === 'selected' && f.originalId === r.id ? 'selected' : ''}">
+                  <input type="radio" ${i === 0 ? 'id="original"' : ''} name="orig" data-act="pick-original" data-id="${r.id}" ${f.addMode === 'selected' && f.originalId === r.id ? 'checked' : ''}>
+                  <div style="min-width:0;overflow-wrap:anywhere"><div class="strong">${esc(r.title)} <span class="faint">· ${esc(r.id)}</span></div>
+                  <div class="small muted">${esc(r.partner)} · ${esc(r.type)}${r.moaSubtype ? ' · ' + esc(r.moaSubtype) : ''} · signed ${A.fmtDate(r.dateSigned)}</div></div></label>`).join('')}
               <label class="choice ${f.addMode === 'not_found' ? 'selected' : ''}">
-                <input type="radio" name="orig" data-act="pick-original" data-id="" ${f.addMode === 'not_found' ? 'checked' : ''}>
-                <div><div class="strong">Agreement not found</div><div class="small muted">Cannot find or access the original agreement. Give Legal enough detail to identify it.</div></div></label>
+                <input type="radio" ${originals.length ? '' : 'id="original"'} name="orig" data-act="pick-original" data-id="" ${f.addMode === 'not_found' ? 'checked' : ''}>
+                <div><div class="strong">Agreement not found</div><div class="small muted">I can't find or access it. Legal will identify it from your details.</div></div></label>
             </div>
-            <div class="hint">${icon('lock')} This list shows only agreements linked to your own registered submissions. Legal can search the full Agreement Register to find others.</div>
-            ${fieldErr(f, 'original', checks)}
+            ${addErr(f, 'original', checks, 'Choose an agreement, or Agreement not found.')}
           </fieldset>
           ${f.addMode === 'not_found' ? `<div class="form-grid" style="background:var(--surface-2);padding:14px;border-radius:6px;border:1px solid var(--border)">
-            <label class="field"><span class="label">Original agreement title <span class="req">*</span></span><input class="input" data-bind="newForm.notFound.title" data-live="readiness" value="${esc(f.notFound.title)}" placeholder="e.g. MOU on vessel crew training"></label>
-            <label class="field"><span class="label">Partner <span class="req">*</span></span><input class="input" data-bind="newForm.notFound.partner" data-live="readiness" value="${esc(f.notFound.partner)}"></label>
-            <label class="field"><span class="label">Approximate date <span class="req">*</span></span><input class="input" data-bind="newForm.notFound.approxDate" data-live="readiness" value="${esc(f.notFound.approxDate)}" placeholder="e.g. Around March 2025"></label>
-            <label class="field"><span class="label">Campus or department <span class="req">*</span></span><input class="input" data-bind="newForm.notFound.campus" data-live="readiness" value="${esc(f.notFound.campus)}"></label>
-            <label class="field full"><span class="label">Other identifying details</span><textarea class="textarea" data-bind="newForm.notFound.details" placeholder="Who signed it, reference numbers, what it covers…">${esc(f.notFound.details)}</textarea></label>
+            <label class="field ${invalid(f, 'nf-title', checks)}"><span class="label">Original agreement title <span class="req">*</span></span><input class="input" ${addAttrs(f, 'nf-title', checks)} data-bind="newForm.notFound.title" value="${esc(f.notFound.title)}" placeholder="e.g. MOU on vessel crew training">${addErr(f, 'nf-title', checks, 'Enter the original agreement title.')}</label>
+            <label class="field ${invalid(f, 'nf-partner', checks)}"><span class="label">Partner <span class="req">*</span></span><input class="input" ${addAttrs(f, 'nf-partner', checks)} data-bind="newForm.notFound.partner" value="${esc(f.notFound.partner)}">${addErr(f, 'nf-partner', checks, 'Enter the partner named in the original.')}</label>
+            <label class="field ${invalid(f, 'nf-approxDate', checks)}"><span class="label">Approximate date <span class="req">*</span></span><input class="input" ${addAttrs(f, 'nf-approxDate', checks)} data-bind="newForm.notFound.approxDate" value="${esc(f.notFound.approxDate)}" placeholder="e.g. Around March 2025">${addErr(f, 'nf-approxDate', checks, 'Enter an approximate date.')}</label>
+            <label class="field ${invalid(f, 'nf-campus', checks)}"><span class="label">Campus or department <span class="req">*</span></span><input class="input" ${addAttrs(f, 'nf-campus', checks)} data-bind="newForm.notFound.campus" value="${esc(f.notFound.campus)}">${addErr(f, 'nf-campus', checks, 'Enter the campus or department.')}</label>
+            <label class="field full"><span class="label">Other identifying details <span class="faint">(optional)</span></span><textarea class="textarea" data-bind="newForm.notFound.details" placeholder="Who signed it, reference numbers, what it covers">${esc(f.notFound.details)}</textarea></label>
           </div>` : ''}
-          <label class="field ${invalid(f, 'purpose', checks)}"><span class="label">Purpose of Addendum <span class="req">*</span></span>
-            <textarea class="textarea" data-bind="newForm.purpose" data-live="readiness" placeholder="e.g. Extension of term, scope change, correction of party details, clause amendment">${esc(f.purpose)}</textarea>
-            <div class="hint">Describe what changes: an extension, a scope change, a party-detail correction or a clause amendment.</div>${fieldErr(f, 'purpose', checks)}</label>
-          <div class="notice info">${icon('info')}<div>Legal confirms the original-agreement link during review and decides whether this Addendum needs LHDN stamping.</div></div>
+          <label class="field ${invalid(f, 'purpose', checks)}"><span class="label">What does this Addendum change? <span class="req">*</span></span>
+            <textarea class="textarea" ${addAttrs(f, 'purpose', checks, 'purpose-hint')} data-bind="newForm.purpose" placeholder="e.g. Extends the term by two years">${esc(f.purpose)}</textarea>
+            <div class="hint" id="purpose-hint">For example an extension, scope change, party-detail correction or clause amendment.</div>${addErr(f, 'purpose', checks, 'Describe what the Addendum changes.')}</label>
+          <p class="small muted">Legal confirms the original and decides whether LHDN stamping is needed.</p>
         </div>
       </div>`;
 

@@ -174,28 +174,41 @@
 
   M.link = {
     wide: true,
-    title: () => 'Find the original agreement in the Register',
+    title: () => 'Find original agreement',
     body: (d) => {
-      const S = A.state();
+      const S = A.state(); const s = A.sub(d.subId);
       const q = (d.q || '').trim().toLowerCase();
-      const res = S.register.filter((r) => r.type !== 'ADDENDUM' || true).filter((r) => !q || [r.id, r.title, r.partner, r.pic, A.campusShort(r.campus)].join(' ').toLowerCase().includes(q));
-      return `<p class="muted">Search the full Agreement Register (Legal only). Choose the agreement this Addendum modifies.</p>
-        <label class="field" style="margin-top:12px"><span class="label">Search</span><input class="input" type="search" data-bind="modal.data.q" data-live="modal" value="${esc(d.q)}" placeholder="Partner, title, PIC or AGR number"></label>
-        <div class="choice-list" style="margin-top:12px">${res.length ? res.map((r) => `<label class="choice ${d.pick === r.id ? 'selected' : ''}"><input type="radio" name="agrpick" data-act="link-pick" data-agr="${r.id}" ${d.pick === r.id ? 'checked' : ''}>
-          <div style="flex:1"><div class="strong">${esc(r.title)} <span class="faint">· ${esc(r.id)}</span></div><div class="small muted">${esc(r.partner)} · ${esc(r.type)}${r.moaSubtype ? ' · ' + esc(r.moaSubtype) : ''} · ${esc(A.campusShort(r.campus))} · signed ${A.fmtDate(r.dateSigned)}</div></div>${A.regStatusBadge(r)}</label>`).join('') : '<p class="muted small">No Register records match.</p>'}</div>
-        <div class="notice neutral small" style="margin-top:12px">${icon('info')}<div>Not in the Register? Add the original through the existing Register process first, then return here. The portal never creates an original record automatically.</div></div>`;
+      const res = S.register.filter((r) => !q || [r.id, r.title, r.partner, r.pic, A.campusShort(r.campus)].join(' ').toLowerCase().includes(q));
+      const cur = s.addendum.linkStatus === 'confirmed' ? A.agr(s.addendum.originalId) : null;
+      return `${cur ? `<div class="notice warn small" style="margin-bottom:12px">${icon('alert')}<div>Confirmed original: <strong>${esc(cur.id)}</strong>, by ${esc(A.personName(s.addendum.confirmedBy, true))}. Choosing another agreement replaces it. The change is recorded in Activity &amp; Audit.</div></div>` : ''}
+        <label class="field"><span class="label">Search the Agreement Register</span><input class="input" type="search" data-bind="modal.data.q" data-live="modal" value="${esc(d.q)}" placeholder="ID, title, partner, PIC or campus" aria-describedby="link-count"></label>
+        <p class="small muted" id="link-count" role="status" style="margin-top:6px">${res.length} record${res.length === 1 ? '' : 's'}</p>
+        <div class="choice-list" role="radiogroup" aria-label="Register records" style="margin-top:8px">${res.length ? res.map((r) => `<label class="choice ${d.pick === r.id ? 'selected' : ''}"><input type="radio" name="agrpick" data-act="link-pick" data-agr="${r.id}" ${d.pick === r.id ? 'checked' : ''}>
+          <div style="flex:1;min-width:0;overflow-wrap:anywhere"><div class="strong">${esc(r.title)} <span class="faint">· ${esc(r.id)}</span>${cur && cur.id === r.id ? ' <span class="chip">Current</span>' : ''}</div><div class="small muted">${esc(r.partner)} · ${esc(r.type)}${r.moaSubtype ? ' · ' + esc(r.moaSubtype) : ''} · ${esc(A.campusShort(r.campus))} · signed ${A.fmtDate(r.dateSigned)}</div></div>${A.regStatusBadge(r)}</label>`).join('') : '<p class="muted small">No matching records. Try the partner name or an ID.</p>'}</div>
+        <p class="small muted" style="margin-top:12px">Not in the Register? Add it through the existing Register process first, then link it here.</p>`;
     },
-    foot: (d) => `<button class="btn" data-act="close-modal">Cancel</button><button class="btn primary" data-act="link-save" ${d.pick ? '' : 'disabled'}>${icon('link')}Link as original agreement</button>`,
+    foot: (d) => {
+      const s = A.sub(d.subId); const replacing = s.addendum.linkStatus === 'confirmed';
+      const same = replacing && d.pick === s.addendum.originalId;
+      return `<button class="btn" data-act="close-modal">Cancel</button><button class="btn primary" data-act="link-save" ${d.pick && !same ? '' : 'disabled'}>${icon('link')}${replacing ? 'Replace original' : 'Confirm as original'}</button>`;
+    },
   };
 
   M.stamping = {
-    title: () => 'LHDN stamping for this Addendum',
-    body: (d) => `<p class="muted">Record whether this Addendum needs LHDN stamping. It is never assumed either way. LHDN guidance indicates that a binding Addendum can itself be a dutiable instrument, so decide per Addendum.</p>
-      <div class="choice-list" style="margin-top:12px">
-        <label class="choice ${d.value === 'yes' ? 'selected' : ''}"><input type="radio" name="stamp" value="yes" data-bind="modal.data.value" data-live="modal" ${d.value === 'yes' ? 'checked' : ''}><div><strong>Stamping required</strong><div class="small muted">After the partner signs, the requester must upload the LHDN stamp certificate before final verification.</div></div></label>
+    title: () => 'LHDN stamping',
+    body: (d) => {
+      const s = A.sub(d.subId); const cur = s.addendum.stampingRequired;
+      return `${cur == null ? '' : `<p class="small muted">Current decision: <strong>${cur ? 'Stamping required' : 'Stamping not required'}</strong>. You can change it until the signed Addendum is submitted.</p>`}
+      <fieldset style="margin-top:8px"><legend>Does this Addendum need LHDN stamping? <span class="req" style="color:var(--maroon)">*</span></legend><div class="choice-list">
+        <label class="choice ${d.value === 'yes' ? 'selected' : ''}"><input type="radio" name="stamp" value="yes" data-bind="modal.data.value" data-live="modal" ${d.value === 'yes' ? 'checked' : ''}><div><strong>Stamping required</strong><div class="small muted">After both parties sign, the requester uploads the LHDN stamp certificate before final verification.</div></div></label>
         <label class="choice ${d.value === 'no' ? 'selected' : ''}"><input type="radio" name="stamp" value="no" data-bind="modal.data.value" data-live="modal" ${d.value === 'no' ? 'checked' : ''}><div><strong>Stamping not required</strong><div class="small muted">The signed Addendum goes straight to final verification.</div></div></label>
-      </div>`,
-    foot: (d) => `<button class="btn" data-act="close-modal">Cancel</button><button class="btn primary" data-act="stamping-save" ${d.value ? '' : 'disabled'}>Record decision</button>`,
+      </div></fieldset>`;
+    },
+    foot: (d) => {
+      const s = A.sub(d.subId); const cur = s.addendum.stampingRequired;
+      const curVal = cur == null ? '' : cur ? 'yes' : 'no';
+      return `<button class="btn" data-act="close-modal">Cancel</button><button class="btn primary" data-act="stamping-save" ${d.value && d.value !== curVal ? '' : 'disabled'}>${cur == null ? 'Record decision' : 'Change decision'}</button>`;
+    },
   };
 
   M.submitNew = {
@@ -204,7 +217,7 @@
       const f = UI.newForm;
       const req = A.requiredIntake(f.category, f.location);
       return `<dl class="kv"><dt>Title</dt><dd>${esc(f.title)}</dd><dt>Partner</dt><dd>${esc(f.partner)}</dd><dt>Classification</dt><dd>${esc(f.category)} · ${esc(f.location)} · ${esc(f.type)}${f.type === 'MOA' && f.moaSubtype ? ' · ' + esc(f.moaSubtype) : ''}</dd>
-        ${f.type === 'ADDENDUM' ? `<dt>Original</dt><dd>${f.addMode === 'selected' ? esc(f.originalId) : 'Agreement not found — details provided'}</dd>` : ''}
+        ${f.type === 'ADDENDUM' ? `<dt>Original</dt><dd style="overflow-wrap:anywhere">${f.addMode === 'selected' ? `${esc(f.originalId)} — ${esc((A.agr(f.originalId) || {}).title || '')}` : `Agreement not found: ${esc(f.notFound.title.trim())} (${esc(f.notFound.partner.trim())})`}</dd><dt>Changes</dt><dd style="overflow-wrap:anywhere">${esc(f.purpose.trim())}</dd>` : ''}
         <dt>Documents</dt><dd>${req.map((k) => `${esc(A.slotLabel(k))}: ${esc(f.files[k].filename)}`).join('<br>')}</dd></dl>
         <div class="notice info small" style="margin-top:14px">${icon('lock')}<div>After you submit, your documents lock while Legal reviews them. If you spot a mistake, send Legal a message — they can reopen a document.</div></div>`;
     },
@@ -350,8 +363,10 @@
   H['remove-new-file'] = (el) => { delete UI.newForm.files[el.dataset.key]; A.render(); };
   H['pick-original'] = (el) => {
     const f = UI.newForm;
+    // Switching keeps what was typed for "Agreement not found"; only the chosen option is submitted.
     if (el.dataset.id) { f.addMode = 'selected'; f.originalId = el.dataset.id; } else { f.addMode = 'not_found'; f.originalId = ''; }
     rerender();
+    const again = document.querySelector(`[data-act="pick-original"][data-id="${el.dataset.id}"]`); if (again) again.focus();
   };
   H['new-submit'] = () => {
     const f = UI.newForm;
@@ -516,13 +531,20 @@
   };
 
   // Addendum
-  H['confirm-link'] = (el) => done(A.actions.confirmLink(el.dataset.sub, el.dataset.agr, rev(el.dataset.sub)), el.dataset.sub, `Original agreement ${el.dataset.agr} confirmed.`);
+  H['confirm-link'] = (el) => {
+    if (done(A.actions.confirmLink(el.dataset.sub, el.dataset.agr, rev(el.dataset.sub)), el.dataset.sub, `Original agreement ${el.dataset.agr} confirmed.`)) {
+      const next = document.querySelector(`[data-act="open-link"][data-sub="${el.dataset.sub}"]`); if (next) next.focus();
+    }
+  };
   H['open-link'] = (el) => {
     const s = A.sub(el.dataset.sub);
     const hint = s.addendum.notFound ? s.addendum.notFound.partner : s.partner;
     A.openModal('link', { subId: s.id, q: hint.split(' ')[0], pick: null });
   };
-  H['link-pick'] = (el) => { UI.modal.data.pick = el.dataset.agr; A.renderModal(); };
+  H['link-pick'] = (el) => {
+    UI.modal.data.pick = el.dataset.agr; A.renderModal();
+    const again = document.querySelector(`.modal [data-act="link-pick"][data-agr="${el.dataset.agr}"]`); if (again) again.focus();
+  };
   H['link-save'] = () => {
     const d = UI.modal.data;
     const res = A.actions.confirmLink(d.subId, d.pick, rev(d.subId));
