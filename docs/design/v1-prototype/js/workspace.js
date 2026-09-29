@@ -29,7 +29,9 @@
     const crumbs = legal ? `<a href="#/queue">Submission Queue</a> / ${esc(s.id)}` : `<a href="#/my">My Submissions</a> / ${esc(s.id)}`;
     const headState = !legal && s.status === 'action_required'
       ? '<span class="badge tone-amber">Action required</span>'
-      : `${A.statusBadge(s)} ${A.nextActorHtml(s, u)}`;
+      : !legal && ['registered', 'not_proceeding'].includes(s.status)
+        ? A.statusBadge(s)
+        : `${A.statusBadge(s)} ${A.nextActorHtml(s, u)}`;
     const head = `<div class="crumbs">${crumbs}</div>
       <div class="ws-head">
         <div class="ws-title"><div class="ws-id">${esc(s.id)} · ${esc(A.TYPE_NAMES[s.type])}</div><h1>${esc(s.title)}</h1>
@@ -241,31 +243,32 @@
     const out = [];
     if (s.finalAccepted && s.finalAccepted.agreement) {
       const n = s.finalAccepted.agreement; const v = s.slots.agreement.versions[n - 1];
-      out.push(`<div class="file">${A.fileIco('pdf')}<div><div class="file-name">${esc(v.filename)}</div><div class="file-meta">Agreement v${n} · <span class="badge tone-green plain">Final Executed</span></div></div><button class="btn sm ghost" data-act="download" data-sub="${s.id}" data-key="agreement" data-n="${n}">${icon('download')}Download</button></div>`);
+      out.push(`<div class="file">${A.fileIco('pdf')}<div><div class="file-name">${esc(v.filename)}</div><div class="file-meta">Agreement v${n}</div></div><button class="btn sm ghost" data-act="download" data-sub="${s.id}" data-key="agreement" data-n="${n}">${icon('download')}Download</button></div>`);
     }
     if (s.finalAccepted && s.finalAccepted.stamp_certificate) {
       const n = s.finalAccepted.stamp_certificate; const v = s.slots.stamp_certificate.versions[n - 1];
-      out.push(`<div class="file">${A.fileIco('pdf')}<div><div class="file-name">${esc(v.filename)}</div><div class="file-meta">LHDN Stamp Certificate v${n} · <span class="badge tone-green plain">Verified</span></div></div><button class="btn sm ghost" data-act="download" data-sub="${s.id}" data-key="stamp_certificate" data-n="${n}">${icon('download')}Download</button></div>`);
+      out.push(`<div class="file">${A.fileIco('pdf')}<div><div class="file-name">${esc(v.filename)}</div><div class="file-meta">LHDN Stamp Certificate v${n}</div></div><button class="btn sm ghost" data-act="download" data-sub="${s.id}" data-key="stamp_certificate" data-n="${n}">${icon('download')}Download</button></div>`);
     }
-    return `<div class="stack-sm" style="margin-top:10px">${out.join('')}</div>`;
+    return out.length ? `<div style="margin-top:14px"><div class="small strong" style="margin-bottom:6px">Final documents</div><div class="stack-sm">${out.join('')}</div></div>` : '';
   }
 
   function registerSummary(s, legal) {
     const r = A.agr(s.agreementId);
     if (!r) return '';
     const orig = r.originalId ? A.agr(r.originalId) : null;
-    return `<div class="reg-summary" style="margin-top:14px"><div class="rs-head">${icon('book')}<strong>Agreement Register record ${esc(r.id)}</strong>${A.regStatusBadge(r)}<span class="spacer"></span>${legal ? `<a class="btn sm" href="#/register/${r.id}">Open in Register</a>` : '<span class="xsmall muted">Your linked outcome only</span>'}</div>
+    // Title and campus repeat the submission header, so they show only when Legal set them differently.
+    return `<div class="reg-summary" style="margin-top:14px"><div class="rs-head">${icon('book')}<strong>Agreement Register record</strong>${A.regStatusBadge(r)}<span class="spacer"></span>${legal ? `<a class="btn sm" href="#/register/${r.id}">Open in Register</a>` : ''}</div>
       <div class="rs-body"><dl class="kv">
-        <dt>Title</dt><dd>${esc(r.title)}</dd>
+        ${r.title !== s.title ? `<dt>Title</dt><dd>${esc(r.title)}</dd>` : ''}
         <dt>Type</dt><dd>${esc(r.type)}${r.moaSubtype ? ` · ${esc(r.moaSubtype)}` : ''}</dd>
         <dt>Partner</dt><dd>${esc(r.partner)} (${esc(r.location)})</dd>
-        <dt>Campus</dt><dd>${esc(A.campusShort(r.campus))}</dd>
+        ${r.campus !== s.campus ? `<dt>Campus</dt><dd>${esc(A.campusShort(r.campus))}</dd>` : ''}
         <dt>Date signed</dt><dd>${A.fmtDate(r.dateSigned)}</dd>
         <dt>Expiry</dt><dd>${r.expiry ? A.fmtDate(r.expiry) : 'No fixed expiry (indefinite / until completion)'}</dd>
         <dt>PIC</dt><dd>${esc(r.pic)}</dd>
         ${orig ? `<dt>Amends</dt><dd>${esc(orig.id)} — ${esc(orig.title)}</dd>` : ''}
-        <dt>Linked submission</dt><dd>${esc(s.id)} (permanent link)</dd>
-      </dl></div></div>`;
+      </dl>
+      <p class="xsmall muted" style="margin-top:10px">${icon('link')} Permanently linked to ${esc(s.id)}.${legal ? '' : ' Only this record is shown to you.'}</p></div></div>`;
   }
 
   // View 6 — completed / closed
@@ -273,24 +276,27 @@
     const legal = A.isLegal(u);
     if (s.status === 'not_proceeding') {
       const c = s.closure;
-      return `<div class="card card-pad next-card closed"><div class="kicker">Closed</div><h2>Not Proceeding</h2>
-        <p class="muted" style="margin-top:6px">Closed by ${esc(A.personName(c.by, true))} on ${A.fmt(c.at)}.</p>
+      return `<div class="card card-pad next-card closed"><h2>This submission is closed</h2>
         <div class="instruction" style="margin-top:10px;border-color:var(--grey-border)"><strong>Reason:</strong> ${esc(c.reason)}</div>
-        <p class="small muted" style="margin-top:10px">${icon('ban')} No Agreement Register record exists or can be created while it is closed. Documents, versions, messages and history are kept${legal ? ', including Internal Legal Notes' : ''}.</p>
-        ${legal ? `<div class="actions"><button class="btn" data-act="open-reopen" data-sub="${s.id}">${icon('refresh')}Reopen with a reason</button></div>` : `<p class="small muted" style="margin-top:6px">If circumstances change, send Legal a message — Legal can reopen it.</p>`}
+        <p class="small muted" style="margin-top:6px">Closed by ${esc(A.personName(c.by, true))} · ${A.fmt(c.at)}</p>
+        <p class="small muted" style="margin-top:10px">${icon('ban')} ${legal ? 'No Agreement Register record exists or can be created while it is closed. Documents, versions, messages and history are kept, including Internal Legal Notes.' : 'No Agreement Register record exists. Documents, messages and history remain available.'}</p>
+        ${legal ? `<div class="actions"><button class="btn" data-act="open-reopen" data-sub="${s.id}">${icon('refresh')}Reopen with a reason</button></div>`
+          : `<div class="actions"><a class="btn" href="#/sub/${s.id}/conversation">${icon('message')}Message Legal</a><span class="small muted">Only Legal can reopen this submission.</span></div>`}
         ${reopenHistory(s)}</div>`;
     }
     const m = s.milestones;
     if (s.status === 'fully_executed') {
-      return `<div class="card card-pad next-card done"><div class="kicker">${legal ? 'Next step · Legal' : 'Fully Executed'}</div>
+      return `<div class="card card-pad next-card done">${legal ? `<div class="kicker">Next step · Legal</div>
         <h2>Fully Executed on ${A.fmtDate(m.fullyExecutedAt)}</h2>
-        <p class="muted" style="margin-top:6px">Verified by ${esc(A.personName(m.fullyExecutedBy, true))}. ${legal ? 'Review the details and create the official Agreement Register record — it is never created automatically.' : 'Legal will now create the official Agreement Register record. Nothing more is needed from you.'}</p>
+        <p class="muted" style="margin-top:6px">Verified by ${esc(A.personName(m.fullyExecutedBy, true))}. Review the details and create the official Agreement Register record — it is never created automatically.</p>`
+        : `<h2>Legal verified your final documents</h2>
+        <p class="muted" style="margin-top:6px">No action needed from you. Legal creates the official Agreement Register record next.</p>
+        <p class="small muted" style="margin-top:4px">${esc(A.personName(m.fullyExecutedBy, true))} · ${A.fmt(m.fullyExecutedAt)}</p>`}
         ${finalDocs(s)}
         ${legal ? legalRegisterAction(s) : ''}${reopenHistory(s)}</div>`;
     }
-    return `<div class="card card-pad next-card done"><div class="kicker">Complete</div>
-      <h2>Registered as ${esc(s.agreementId)}</h2>
-      <p class="muted" style="margin-top:6px">Fully Executed on ${A.fmtDate(m.fullyExecutedAt)} and registered on ${A.fmtDate(m.registeredAt)}. Final documents are locked; downloads and the full history remain available.</p>
+    return `<div class="card card-pad next-card done"><h2>Registered as ${esc(s.agreementId)}</h2>
+      <p class="muted" style="margin-top:6px">${legal ? '' : 'No action needed. '}Fully Executed ${A.fmtDate(m.fullyExecutedAt)} · Registered ${A.fmtDate(m.registeredAt)}</p>
       ${finalDocs(s)}${registerSummary(s, legal)}${reopenHistory(s)}</div>`;
   }
 
