@@ -145,9 +145,17 @@
     const m = s.milestones;
     return {
       title: s.title, partner: s.partner, location: s.location, category: s.category, campus: s.campus, type: s.type, moaSubtype: s.moaSubtype || '',
-      dateSigned: m.partnerSignedAt ? isoDate(m.partnerSignedAt) : '', expiry: '', indefinite: false, pic: A.user(s.requesterId).name, notes: '', tried: false, fields: {},
+      dateSigned: m.partnerSignedAt ? isoDate(m.partnerSignedAt) : '', expiry: '', pic: A.user(s.requesterId).name, notes: '', tried: false,
     };
   }
+  // Field order used to focus the first invalid field.
+  const REG_FIELDS = ['title', 'partner', 'dateSigned', 'expiry', 'pic'];
+  A.focusFirstRegError = (f) => {
+    const e = A.registerFieldErrors(f);
+    const k = REG_FIELDS.find((x) => e[x]);
+    const el = k && document.getElementById('rf-' + k);
+    if (el) el.focus();
+  };
 
   A.views.registerCreate = function (id) {
     const s = A.sub(id);
@@ -158,67 +166,74 @@
     if (s.status === 'registered') {
       const r = A.agr(s.agreementId);
       return `<div class="page">${back}
-        <div class="card card-pad next-card done"><div class="kicker">Success</div><h1 style="margin-top:4px">${icon('check')} Register record ${esc(r.id)} created</h1>
-          <p class="muted" style="margin-top:6px">One Signed record was created and permanently linked to ${esc(s.id)}. The submission is now <strong>Registered</strong> and the requester can see this outcome on their submission.</p>
+        <div class="card card-pad next-card done"><h1>${icon('check')} Register record ${esc(r.id)} created</h1>
+          <p class="muted" style="margin-top:6px">${esc(s.id)} is now <strong>Registered</strong>, and the requester can see this outcome.</p>
           ${A.registerSummary(s, true)}
           <div class="actions"><a class="btn primary" href="#/register/${r.id}">Open Register record</a><a class="btn" href="#/sub/${s.id}/overview">Back to submission</a><a class="btn ghost" href="#/queue">Submission Queue</a></div></div></div>`;
     }
     const blockers = A.registerBlockers(s);
     if (blockers.length) {
       return `<div class="page">${back}<div class="card card-pad"><h1>Create Register Record</h1>
-        <div class="notice warn" style="margin-top:12px">${icon('lock')}<div><strong>Not available yet.</strong><ul class="blockers">${blockers.map((b) => `<li class="no">${icon('alert')}${esc(b)}</li>`).join('')}</ul></div></div>
+        <div class="notice warn" style="margin-top:12px">${icon('lock')}<div><strong>Not available.</strong><ul class="blockers">${blockers.map((b) => `<li class="no">${icon('alert')}${esc(b)}</li>`).join('')}</ul></div></div>
         <p style="margin-top:14px"><a class="btn" href="#/sub/${s.id}/overview">Back to submission</a></p></div></div>`;
     }
 
     const f = UI.regForm[id] || (UI.regForm[id] = initForm(s));
     const e = f.tried ? A.registerFieldErrors(f) : {};
+    // Input attributes: id, live re-validation, and the error association for screen readers.
+    const at = (k) => `id="rf-${k}" data-bind="regForm.${id}.${k}" data-live="rerender" ${e[k] ? `aria-invalid="true" aria-describedby="rf-${k}-err${HINTS[k] ? ` rf-${k}-hint` : ''}"` : HINTS[k] ? `aria-describedby="rf-${k}-hint"` : ''}`;
+    const hint = (k) => HINTS[k] ? `<div class="hint" id="rf-${k}-hint">${HINTS[k]}</div>` : '';
+    const err = (k) => e[k] ? `<div class="error" id="rf-${k}-err">${icon('alert')}${esc(e[k])}</div>` : '';
     const fld = (k) => e[k] ? 'invalid' : '';
-    const err = (k) => e[k] ? `<div class="error">${icon('alert')}${esc(e[k])}</div>` : '';
     const orig = s.type === 'ADDENDUM' ? A.agr(s.addendum.originalId) : null;
     return `<div class="page">${back}
-      <div class="page-head"><div style="flex:1"><h1>Create Register Record</h1><p class="lede">Pre-filled from ${esc(s.id)}. Review, correct and complete the official details, then confirm. Nothing is saved until you confirm.</p></div></div>
+      <div class="page-head"><div style="flex:1"><h1>Create Register Record</h1><p class="lede">Prefilled from ${esc(s.id)}. Nothing is saved until you confirm. <span class="req">*</span> Required.</p></div></div>
       <div class="grid-form">
         <div class="stack">
-          <div class="card"><div class="card-head"><h2>Agreement details</h2><span class="spacer"></span><span class="chip">Pre-filled — please check</span></div>
+          <div class="card"><div class="card-head"><h2>Agreement details</h2></div>
             <div class="card-body form-grid">
-              <label class="field full ${fld('title')}"><span class="label">Title <span class="req">*</span></span><input class="input" data-bind="regForm.${id}.title" value="${esc(f.title)}">${err('title')}</label>
-              <label class="field"><span class="label">Agreement type</span><input class="input" value="${esc(f.type)}" disabled><div class="hint">From the submission classification.</div></label>
-              ${f.type === 'MOA' ? `<label class="field"><span class="label">MOA subtype / arrangement <span class="faint">(descriptive)</span></span><input class="input" data-bind="regForm.${id}.moaSubtype" value="${esc(f.moaSubtype)}"><div class="hint">The Register type stays MOA.</div></label>` : '<div></div>'}
-              <label class="field ${fld('partner')}"><span class="label">Partner <span class="req">*</span></span><input class="input" data-bind="regForm.${id}.partner" value="${esc(f.partner)}">${err('partner')}</label>
+              <label class="field full ${fld('title')}"><span class="label">Title <span class="req">*</span></span><input class="input" ${at('title')} value="${esc(f.title)}">${err('title')}</label>
+              <div class="field"><span class="label" id="rf-type-label">Agreement type</span><input class="input" value="${esc(s.type)}" disabled aria-labelledby="rf-type-label" aria-describedby="rf-type-hint"><div class="hint" id="rf-type-hint">Fixed by the submission.</div></div>
+              ${s.type === 'MOA' ? `<label class="field"><span class="label">MOA arrangement <span class="faint">(optional)</span></span><input class="input" data-bind="regForm.${id}.moaSubtype" data-live="rerender" value="${esc(f.moaSubtype)}"></label>` : '<div></div>'}
+              <label class="field ${fld('partner')}"><span class="label">Partner <span class="req">*</span></span><input class="input" ${at('partner')} value="${esc(f.partner)}">${err('partner')}</label>
               <label class="field"><span class="label">Partner location</span><select class="select" data-bind="regForm.${id}.location"><option ${f.location === 'Local' ? 'selected' : ''}>Local</option><option ${f.location === 'International' ? 'selected' : ''}>International</option></select></label>
               <label class="field"><span class="label">Engagement category</span><select class="select" data-bind="regForm.${id}.category"><option ${f.category === 'Academic' ? 'selected' : ''}>Academic</option><option ${f.category === 'Industry' ? 'selected' : ''}>Industry</option></select></label>
               <label class="field"><span class="label">Campus / department</span><select class="select" data-bind="regForm.${id}.campus">${A.CAMPUSES.map((c) => `<option value="${c[0]}" ${f.campus === c[0] ? 'selected' : ''}>${esc(c[1])}</option>`).join('')}</select></label>
+              ${orig ? `<div class="field full"><span class="label">Original agreement (confirmed)</span><div class="slot-row done"><div><strong>${esc(orig.id)}</strong> — ${esc(orig.title)} <div class="small muted">${esc(orig.partner)} · ${esc(orig.type)}${orig.moaSubtype ? ' · ' + esc(orig.moaSubtype) : ''} · confirmed by ${esc(A.personName(s.addendum.confirmedBy, true))}</div></div>${icon('link')}</div></div>` : ''}
             </div></div>
-          <div class="card"><div class="card-head"><h2>Register details to complete</h2></div>
+          <div class="card"><div class="card-head"><h2>Register details</h2></div>
             <div class="card-body form-grid">
-              <label class="field ${fld('dateSigned')}"><span class="label">Date signed <span class="req">*</span></span><input class="input" type="date" data-bind="regForm.${id}.dateSigned" value="${esc(f.dateSigned)}"><div class="hint">Suggested from when the both-parties-signed PDF was submitted — check it against the document.</div>${err('dateSigned')}</label>
-              <div class="field ${fld('expiry')}"><span class="label">Expiry date ${f.indefinite ? '' : '<span class="req">*</span>'}</span>
-                <input class="input" type="date" data-bind="regForm.${id}.expiry" value="${esc(f.expiry)}" ${f.indefinite ? 'disabled' : ''} aria-label="Expiry date">
-                <label class="check" style="margin-top:8px"><input type="checkbox" data-bind="regForm.${id}.indefinite" data-live="rerender" ${f.indefinite ? 'checked' : ''}><span class="small">No fixed expiry (indefinite / until completion)</span></label>${err('expiry')}</div>
-              <label class="field ${fld('pic')}"><span class="label">PIC name <span class="req">*</span></span><input class="input" data-bind="regForm.${id}.pic" value="${esc(f.pic)}"><div class="hint">A person's name only — not a system account.</div>${err('pic')}</label>
-              <label class="field"><span class="label">Remarks <span class="faint">(optional)</span></span><input class="input" data-bind="regForm.${id}.notes" value="${esc(f.notes)}"></label>
-              ${orig ? `<div class="field full"><span class="label">Original agreement (Addendum)</span><div class="slot-row done"><div><strong>${esc(orig.id)}</strong> — ${esc(orig.title)} <div class="small muted">${esc(orig.partner)} · ${esc(orig.type)}${orig.moaSubtype ? ' · ' + esc(orig.moaSubtype) : ''} · confirmed by ${esc(A.personName(s.addendum.confirmedBy, true))}</div></div>${icon('link')}</div></div>` : ''}
+              <label class="field ${fld('dateSigned')}"><span class="label">Date signed <span class="req">*</span></span><input class="input" type="date" ${at('dateSigned')} value="${esc(f.dateSigned)}">${hint('dateSigned')}${err('dateSigned')}</label>
+              <label class="field ${fld('expiry')}"><span class="label">Expiry date <span class="req">*</span></span><input class="input" type="date" ${at('expiry')} value="${esc(f.expiry)}">${hint('expiry')}${err('expiry')}</label>
+              <label class="field ${fld('pic')}"><span class="label">PIC name <span class="req">*</span></span><input class="input" ${at('pic')} value="${esc(f.pic)}">${hint('pic')}${err('pic')}</label>
+              <label class="field"><span class="label">Remarks <span class="faint">(optional)</span></span><input class="input" data-bind="regForm.${id}.notes" data-live="rerender" value="${esc(f.notes)}"></label>
             </div></div>
         </div>
-        <div class="card sticky"><div class="card-head"><h3>What confirming does</h3></div>
+        <div class="card sticky"><div class="card-head"><h3>On creation</h3></div>
           <div class="card-body"><ul class="ready-list">
-            <li class="ok">${icon('check')}Creates <strong>one</strong> ${esc(s.type)} record with status Signed</li>
-            <li class="ok">${icon('link')}Links it permanently to ${esc(s.id)}</li>
-            ${orig ? `<li class="ok">${icon('link')}Links this Addendum to ${esc(orig.id)}</li>` : ''}
-            <li class="ok">${icon('activity')}Records the creation and link in Activity &amp; Audit</li>
-            <li class="ok">${icon('arrow')}Moves the submission to Registered</li>
-          </ul><p class="xsmall muted" style="margin-top:10px">All of this succeeds together or nothing is saved. There is no separate Effective Date — the Register uses Date signed.</p></div>
-          <div class="card-foot"><button class="btn primary lg" style="width:100%" data-act="register-review" data-sub="${s.id}">${icon('check')}Review and confirm</button></div></div>
+            <li class="ok">${icon('check')}One Signed ${esc(s.type)} record is created</li>
+            <li class="ok">${icon('link')}It is permanently linked to ${esc(s.id)}</li>
+            ${orig ? `<li class="ok">${icon('link')}This Addendum is linked to ${esc(orig.id)}</li>` : ''}
+            <li class="ok">${icon('arrow')}The submission becomes Registered</li>
+          </ul><p class="xsmall muted" style="margin-top:10px">Recorded in Activity &amp; Audit. Everything is saved together or not at all.</p></div>
+          <div class="card-foot"><button class="btn primary lg" style="width:100%" data-act="register-review" data-sub="${s.id}">${icon('check')}Review and create</button></div></div>
       </div></div>`;
+  };
+  const HINTS = {
+    dateSigned: 'Check against the signed document. The Register has no separate effective date.',
+    expiry: 'Must be after the date signed.',
+    pic: 'A name only, not a system account.',
   };
 
   A.MODALS.registerConfirm = {
-    title: () => 'Confirm Register record',
+    title: () => 'Create Register record?',
     body: (d) => {
       const s = A.sub(d.subId); const f = UI.regForm[d.subId];
-      return `<p>Create this record and link it to <strong>${esc(s.id)}</strong>? It cannot be undone from this screen.</p>
-        <dl class="kv" style="margin-top:12px"><dt>Title</dt><dd>${esc(f.title)}</dd><dt>Type</dt><dd>${esc(f.type)}${f.type === 'MOA' && f.moaSubtype ? ' · ' + esc(f.moaSubtype) : ''}</dd><dt>Partner</dt><dd>${esc(f.partner)} (${esc(f.location)})</dd>
-        <dt>Campus</dt><dd>${esc(A.campusShort(f.campus))}</dd><dt>Date signed</dt><dd>${A.fmtDate(f.dateSigned)}</dd><dt>Expiry</dt><dd>${f.indefinite ? 'No fixed expiry' : A.fmtDate(f.expiry)}</dd><dt>PIC</dt><dd>${esc(f.pic)}</dd><dt>Status</dt><dd>Signed</dd></dl>`;
+      const orig = s.type === 'ADDENDUM' ? A.agr(s.addendum.originalId) : null;
+      return `<p>One record is created and permanently linked to <strong>${esc(s.id)}</strong>, which becomes Registered. It is saved together or not at all, and cannot be undone here.</p>
+        <dl class="kv" style="margin-top:12px"><dt>Title</dt><dd>${esc(f.title.trim())}</dd><dt>Type</dt><dd>${esc(s.type)}${s.type === 'MOA' && f.moaSubtype.trim() ? ' · ' + esc(f.moaSubtype.trim()) : ''}</dd><dt>Partner</dt><dd>${esc(f.partner.trim())} (${esc(f.location)})</dd>
+        <dt>Category</dt><dd>${esc(f.category)}</dd><dt>Campus</dt><dd>${esc(A.campusShort(f.campus))}</dd><dt>Date signed</dt><dd>${A.fmtDate(f.dateSigned)}</dd><dt>Expiry</dt><dd>${A.fmtDate(f.expiry)}</dd><dt>PIC</dt><dd>${esc(f.pic.trim())}</dd>
+        ${f.notes.trim() ? `<dt>Remarks</dt><dd>${esc(f.notes.trim())}</dd>` : ''}${orig ? `<dt>Original</dt><dd>${esc(orig.id)} — ${esc(orig.title)}</dd>` : ''}<dt>Status</dt><dd>Signed</dd></dl>`;
     },
     foot: (d) => `<button class="btn" data-act="close-modal">Go back and edit</button><button class="btn primary" data-act="register-confirm" data-sub="${d.subId}" ${d.busy ? 'disabled aria-busy="true"' : ''}>${d.busy ? 'Creating record…' : 'Create record'}</button>`,
   };

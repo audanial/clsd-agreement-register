@@ -569,7 +569,7 @@
     const id = el.dataset.sub; const f = UI.regForm[id];
     f.tried = true;
     const e = A.registerFieldErrors(f);
-    if (Object.keys(e).length) { A.render(); A.toast('Complete the highlighted fields.', 'error'); return; }
+    if (Object.keys(e).length) { A.render(); A.focusFirstRegError(f); return; }
     A.openModal('registerConfirm', { subId: id, busy: false });
   };
   H['register-confirm'] = (el) => {
@@ -579,6 +579,7 @@
     setTimeout(() => {
       const res = A.actions.createRegister(d.subId, UI.regForm[d.subId], rev(d.subId));
       UI.busy = false;
+      if (!res.ok && res.fields) { A.closeModal(); UI.regForm[d.subId].tried = true; A.render(); A.focusFirstRegError(UI.regForm[d.subId]); return; }
       if (!res.ok) { d.busy = false; if (res.conflict) { UI.modal.conflict = true; } else { UI.modal.error = res.error; } A.renderModal(); return; }
       after(d.subId, res);
       A.closeModal();
