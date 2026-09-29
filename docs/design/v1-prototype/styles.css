@@ -418,7 +418,8 @@ legend { font-weight: 600; font-size: .88rem; color: var(--text-2); margin-botto
 .notes-banner { background: var(--maroon); color: #fff; border-radius: var(--radius) var(--radius) 0 0; padding: 12px 18px; display: flex; gap: 10px; align-items: flex-start; }
 .notes-banner .ico { width: 18px; height: 18px; flex: 0 0 18px; margin-top: 2px; }
 .note { border-left: 3px solid #E7CDD3; padding: 4px 0 4px 14px; }
-.note .note-text { white-space: pre-wrap; margin-top: 3px; }
+.note .note-text { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 3px; }
+.notes-banner h3 { font-size: 1rem; }
 
 /* Activity */
 .timeline { list-style: none; margin: 0; padding: 0; }

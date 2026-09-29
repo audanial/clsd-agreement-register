@@ -318,7 +318,7 @@
     body: '<p>This restores every fictional submission, message, version and unread count to its starting state. Nothing outside this prototype is affected.</p>',
     fn: () => {
       A.reset();
-      Object.assign(UI, { viewRev: {}, expanded: {}, uploadErrors: {}, composer: {}, noteComposer: {}, responseDraft: {}, newForm: null, regForm: {}, justRead: {}, verifyChecks: {}, previewEmpty: false, drawer: false, busy: false });
+      Object.assign(UI, { viewRev: {}, expanded: {}, uploadErrors: {}, composer: {}, noteComposer: {}, noteError: {}, responseDraft: {}, newForm: null, regForm: {}, justRead: {}, verifyChecks: {}, previewEmpty: false, drawer: false, busy: false });
       UI.myFilter = { tab: 'all', q: '' };
       UI.queueFilter = { tab: 'legal', q: '', status: '', category: '', campus: '', since: '' };
       UI.regFilter = { q: '', type: '' };
@@ -426,10 +426,18 @@
   };
   H['add-note'] = (el) => {
     const id = el.dataset.sub;
+    UI.noteError = UI.noteError || {};
     const res = A.actions.addNote(id, UI.noteComposer[id]);
-    if (!res.ok) { A.toast(res.error, 'error'); return; }
+    if (!res.ok) {
+      // Show the reason beside the field and keep the draft.
+      UI.noteError[id] = res.error; A.render();
+      const t = document.getElementById('note-text'); if (t) t.focus();
+      return;
+    }
+    delete UI.noteError[id];
     UI.noteComposer[id] = ''; after(id, res); A.render();
-    A.toast('Internal note added (Legal and Admin only).', 'success');
+    const t = document.getElementById('note-text'); if (t) t.focus();
+    A.toast('Internal note added.', 'success');
   };
 
   // Legal review
@@ -599,6 +607,13 @@
     else if (el.type === 'radio') { if (!el.checked) return; value = el.value; }
     else value = el.value;
     setPath(UI, path, value);
+    if (path.startsWith('noteComposer.') && UI.noteError) {
+      // Typing again clears the "write a note first" message.
+      delete UI.noteError[path.split('.')[1]];
+      const msg = document.getElementById('note-error'); if (msg) msg.remove();
+      el.removeAttribute('aria-invalid');
+      el.setAttribute('aria-describedby', 'note-help');
+    }
     const live = el.getAttribute('data-live');
     const isText = el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !['radio', 'checkbox', 'date'].includes(el.type));
     if (e.type === 'input' && !isText) return; // selects/radios handled on change
