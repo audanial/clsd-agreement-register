@@ -27,10 +27,13 @@
     if (UI.viewRev[id] == null) UI.viewRev[id] = s.rev;
 
     const crumbs = legal ? `<a href="#/queue">Submission Queue</a> / ${esc(s.id)}` : `<a href="#/my">My Submissions</a> / ${esc(s.id)}`;
+    const headState = !legal && s.status === 'action_required'
+      ? '<span class="badge tone-amber">Action required</span>'
+      : `${A.statusBadge(s)} ${A.nextActorHtml(s, u)}`;
     const head = `<div class="crumbs">${crumbs}</div>
       <div class="ws-head">
         <div class="ws-title"><div class="ws-id">${esc(s.id)} · ${esc(A.TYPE_NAMES[s.type])}</div><h1>${esc(s.title)}</h1>
-          <div class="ws-meta">${A.statusBadge(s)} ${A.nextActorHtml(s, u)} <span class="chip">${A.typeLabel(s)}</span> <span class="chip">${esc(s.category)} · ${esc(s.location)}</span> <span class="chip">${esc(A.campusShort(s.campus))}</span> ${A.pcCue()}</div>
+          <div class="ws-meta">${headState} <span class="chip">${A.typeLabel(s)}</span> <span class="chip">${esc(s.category)} · ${esc(s.location)}</span> <span class="chip">${esc(A.campusShort(s.campus))}</span> ${A.pcCue()}</div>
         </div>
         ${legal && s.lastHandler ? `<div class="small muted" style="text-align:right">Last handled by<br><strong style="color:var(--text)">${esc(A.personName(s.lastHandler))}</strong><div class="xsmall faint">Shared — any Legal user can act</div></div>` : ''}
       </div>`;
@@ -126,34 +129,37 @@
     const all = A.slotList(s).filter((x) => !x.execution && !x.retired).map((x) => x.key);
     const locked = all.filter((k) => !req.request.slots.includes(k));
     const finalPhase = req.request.phase === 'final';
-    const blockers = [];
-    if (r.needAnswer) blockers.push({ ok: draft.trim().length >= 3, text: 'Answer Legal\'s clarification question' });
-    req.request.slots.forEach((k) => blockers.push({ ok: r.done.includes(k), text: `Upload a new ${A.slotLabel(k)}${finalPhase ? ' (PDF)' : ''}` }));
-    const ready = blockers.every((b) => b.ok);
+    const remaining = [];
+    if (r.needAnswer && draft.trim().length < 3) remaining.push('written answer');
+    req.request.slots.filter((k) => !r.done.includes(k)).forEach((k) => remaining.push(A.slotLabel(k)));
+    const ready = remaining.length === 0;
     return `<div class="action-panel" id="action-required">
-      <div class="ap-head"><div class="row"><span class="badge tone-amber">Action Required from you</span><span class="small muted">Requested by ${esc(A.personName(req.by, true))} · ${A.fmt(req.at)}</span></div>
-        <h2 style="margin-top:8px">${finalPhase ? 'Correct your final documents' : 'Legal needs your response'}</h2></div>
+      <div class="ap-head"><h2>${finalPhase ? 'Correct your final documents' : 'Respond to Legal'}</h2>
+        <div class="small muted" style="margin-top:4px">${esc(A.personName(req.by, true))} · ${A.fmt(req.at)}</div></div>
       <div class="ap-body stack">
-        <div><div class="small strong" style="margin-bottom:6px">Legal's instructions</div><div class="instruction">${esc(req.text)}</div></div>
-        ${r.needAnswer ? `<label class="field"><span class="label">Your answer to Legal <span class="req">*</span></span>
-          <textarea class="textarea" data-bind="responseDraft.${s.id}" data-live="response" placeholder="Type your answer here">${esc(draft)}</textarea>
-          <div class="hint">Your answer is sent when you select Submit Response.</div></label>` : `<div class="notice neutral small">${icon('info')}<div>No written answer is needed — Legal asked only for ${req.request.slots.length === 1 ? 'a document' : 'documents'}.</div></div>`}
-        ${req.request.slots.length ? `<div><div class="small strong" style="margin-bottom:6px">Documents Legal reopened (${req.request.slots.length})</div>
+        <div class="instruction">${esc(req.text)}</div>
+        ${r.needAnswer ? `<label class="field"><span class="label">Your answer <span class="req">*</span></span>
+          <textarea class="textarea" data-bind="responseDraft.${s.id}" data-live="response" placeholder="Type your answer">${esc(draft)}</textarea>
+          </label>` : '<p class="small muted">No written answer needed.</p>'}
+        ${req.request.slots.length ? `<div><div class="small strong" style="margin-bottom:6px">Upload ${req.request.slots.length === 1 ? 'this document' : 'these documents'}</div>
           ${req.request.slots.map((k) => {
             const cur = A.currentVersion(s, k);
             const done = r.done.includes(k);
             const err = UI.uploadErrors[s.id + ':' + k];
-            return `<div class="slot-row ${done ? 'done' : ''}"><div><div class="strong">${icon(done ? 'check' : 'unlock')} ${esc(A.slotLabel(k))}</div>
-              <div class="small muted">${cur ? `${done ? 'New version' : 'Current'}: v${A.versionNo(s, k, cur)} · ${esc(cur.filename)}${done ? ' — ready to send' : ''}` : 'No file yet — upload one'}</div>
+            return `<div class="slot-row ${done ? 'done' : ''}"><div><div class="strong">${icon(done ? 'check' : 'unlock')} ${esc(A.slotLabel(k))}${finalPhase ? ' <span class="xsmall muted">PDF only</span>' : ''}</div>
+              <div class="small muted">${cur ? `${done ? 'New' : 'Current'}: v${A.versionNo(s, k, cur)} · ${esc(cur.filename)}` : 'No file uploaded'}</div>
               ${err ? `<div class="small" style="color:var(--red);margin-top:4px">${icon('alert')} Upload failed: ${esc(err)} ${cur ? 'Current file unchanged.' : ''}</div>` : ''}</div>
               <button class="btn sm ${done ? '' : 'primary'}" data-act="upload" data-sub="${s.id}" data-key="${k}">${icon('upload')}${done ? 'Replace again' : cur ? 'Upload replacement' : 'Upload'}</button></div>`;
           }).join('')}</div>` : ''}
-        ${locked.length ? `<details class="disclose"><summary>${locked.length} other document${locked.length === 1 ? '' : 's'} stay locked</summary>
-          <div style="margin-top:8px">${locked.map((k) => `<div class="slot-row locked"><div>${icon('lock')} ${esc(A.slotLabel(k))} <span class="xsmall">— not part of Legal's request</span></div><span></span></div>`).join('')}</div></details>` : ''}
+        ${locked.length ? `<details class="disclose"><summary>${locked.length} other document${locked.length === 1 ? ' is' : 's are'} locked</summary>
+          <p class="small muted" style="margin-top:8px">Legal did not reopen ${locked.length === 1 ? 'it' : 'these'}. To change ${locked.length === 1 ? 'it' : 'one'}, message Legal.</p>
+          <div style="margin-top:8px">${locked.map((k) => `<div class="slot-row locked"><div>${icon('lock')} ${esc(A.slotLabel(k))}</div><span></span></div>`).join('')}</div></details>` : ''}
         <div class="hr"></div>
-        <ul class="blockers">${blockers.map((b) => `<li class="${b.ok ? 'ok' : 'no'}">${icon(b.ok ? 'check' : 'alert')}${esc(b.text)}</li>`).join('')}</ul>
-        <div class="row-wrap"><button class="btn maroon lg" data-act="submit-response" data-sub="${s.id}" ${ready ? '' : 'aria-disabled="true"'}>${icon('arrow')}Submit Response</button>
-          <span class="small muted">Uploading a file or sending a message does not send your response. Select <strong>Submit Response</strong> when everything is ready.</span></div>
+        <div class="row-wrap"><button class="btn maroon lg" data-act="submit-response" data-sub="${s.id}" aria-describedby="response-status" ${ready ? '' : 'aria-disabled="true"'}>${icon('arrow')}Submit Response</button>
+          <div class="small" id="response-status">${ready
+            ? `<span style="color:var(--green)">${icon('check')} Ready to submit.</span>`
+            : `<span style="color:var(--amber)">${icon('alert')} Still needed: ${esc(remaining.join(', '))}.</span>`}
+            <div class="muted">Nothing is sent until you select <strong>Submit Response</strong>.</div></div></div>
       </div></div>`;
   }
 

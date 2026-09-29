@@ -529,7 +529,7 @@
     if (!res.ok) { A.toast(res.error, 'error'); return; }
     UI.responseDraft[id] = '';
     A.render();
-    A.toast('Response submitted — Legal has been notified and the review resumes.', 'success');
+    A.toast('Response submitted. Legal has been notified.', 'success');
   };
   H['submit-signed'] = (el) => {
     const id = el.dataset.sub;
