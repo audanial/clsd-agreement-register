@@ -178,47 +178,62 @@
     const cert = A.certThisStage(s);
     const stage = s.status;
     const err = (k) => UI.uploadErrors[s.id + ':' + k];
-    const step = (n, state, title, body) => `<div class="slot-row ${state === 'done' ? 'done' : state === 'locked' ? 'locked' : ''}" style="align-items:flex-start">
-      <div class="row" style="align-items:flex-start;gap:12px"><span class="cl-num" style="${state === 'done' ? 'background:var(--green);color:#fff' : state === 'active' ? 'background:var(--navy);color:#fff' : ''}">${state === 'done' ? icon('check') : n}</span><div><div class="strong">${title}</div>${body}</div></div><span></span></div>`;
+    const stateLabel = { done: 'Completed: ', locked: 'Locked: ', active: '' };
+    const step = (n, state, title, body) => `<li class="slot-row ${state === 'done' ? 'done' : state === 'locked' ? 'locked' : ''}" style="align-items:flex-start;grid-template-columns:minmax(0,1fr)">
+      <div class="row" style="align-items:flex-start;gap:12px"><span class="cl-num" aria-hidden="true" style="flex:0 0 24px;${state === 'done' ? 'background:var(--green);color:#fff' : state === 'active' ? 'background:var(--navy);color:#fff' : ''}">${state === 'done' ? icon('check') : n}</span><div style="min-width:0"><div class="strong"><span class="sr-only">${stateLabel[state]}</span>${title}</div>${body}</div></div></li>`;
+    const fileCard = (name, meta, btn) => `<div class="file" style="margin-top:8px">${A.fileIco('pdf')}<div><div class="file-name">${esc(name)}</div><div class="file-meta">${meta}</div>${btn || ''}</div></div>`;
+    const uploadFailed = (k, note) => err(k) ? `<div class="small" style="color:var(--red);margin-top:4px">${icon('alert')} Upload failed: ${esc(err(k))} ${note}</div>` : '';
+    const afterSigning = stage === 'awaiting_stamping';
 
-    const s1 = step(1, requesterDownloaded(s, unikIdx + 1) ? 'done' : 'active', 'Download the UniKL-signed agreement',
-      `<div class="file" style="margin-top:8px">${A.fileIco('pdf')}<div><div class="file-name">${esc(unik.filename)}</div><div class="file-meta">v${unikIdx + 1} · UniKL Signed by the ${esc(A.signatory(s))} · uploaded by ${esc(A.personName(unik.by, true))}, ${A.fmt(unik.at)}</div>
-       <button class="btn sm" style="margin-top:6px" data-act="download" data-sub="${s.id}" data-key="agreement" data-n="${unikIdx + 1}">${icon('download')}Download v${unikIdx + 1}</button></div></div>`);
-    const s2 = step(2, signed ? 'done' : 'active', 'Get the partner\'s signature on this same version',
-      `<div class="small muted">Send the UniKL-signed copy to ${esc(s.partner)}. Do not use an earlier draft. This happens outside the system.</div>`);
-    const s3 = step(3, stage === 'awaiting_stamping' ? 'done' : signed ? 'done' : 'active', 'Upload the both-parties-signed agreement (PDF)',
-      signed ? `<div class="file" style="margin-top:8px">${A.fileIco('pdf')}<div><div class="file-name">${esc(signed.filename)}</div><div class="file-meta">v${vs.length} · Both Parties Signed · ${A.fmt(signed.at)}</div>
-        ${stage === 'awaiting_partner' ? `<button class="btn sm" style="margin-top:6px" data-act="upload" data-sub="${s.id}" data-key="agreement">${icon('upload')}Replace</button>` : ''}</div></div>`
-        : `<div class="small muted">PDF only, up to 20 MB. It becomes a new version of the Agreement — earlier versions are kept.</div>
-           ${err('agreement') ? `<div class="small" style="color:var(--red);margin-top:4px">${icon('alert')} Upload failed: ${esc(err('agreement'))} The UniKL-signed version is unchanged.</div>` : ''}
+    const uv = unikIdx + 1;
+    const s1 = step(1, afterSigning || requesterDownloaded(s, uv) ? 'done' : 'active', 'Download the UniKL-signed agreement',
+      afterSigning ? '' : fileCard(unik.filename, `v${uv} · Signed by the ${esc(A.signatory(s))} · ${A.fmt(unik.at)}`,
+        `<button class="btn sm" style="margin-top:6px" data-act="download" data-sub="${s.id}" data-key="agreement" data-n="${uv}">${icon('download')}Download v${uv}</button>`));
+    const s2 = step(2, signed ? 'done' : 'active', `Send v${uv} to ${esc(s.partner)} to sign`,
+      afterSigning ? '' : '<div class="small muted">Outside the system. Do not use an earlier version.</div>');
+    const s3 = step(3, signed ? 'done' : 'active', 'Upload the signed PDF',
+      signed ? fileCard(signed.filename, `v${vs.length} · Signed by both parties · ${A.fmt(signed.at)}`,
+        afterSigning ? '' : `<div class="small muted" style="margin-top:4px">Uploaded, not submitted yet.</div><button class="btn sm" style="margin-top:6px" data-act="upload" data-sub="${s.id}" data-key="agreement">${icon('upload')}Replace</button>`)
+        : `<div class="small muted">PDF, up to 20 MB. Saved as a new Agreement version.</div>
+           ${uploadFailed('agreement', 'The UniKL-signed version is unchanged.')}
            <button class="btn sm primary" style="margin-top:6px" data-act="upload" data-sub="${s.id}" data-key="agreement">${icon('upload')}Upload signed PDF</button>`);
     let s4 = '';
     if (stamp === true) {
-      s4 = step(4, stage === 'awaiting_stamping' ? (cert ? 'done' : 'active') : 'locked', 'Complete LHDN stamping and upload the stamp certificate (PDF)',
-        stage !== 'awaiting_stamping' ? '<div class="small">Available after you submit the signed agreement.</div>'
-          : cert ? `<div class="file" style="margin-top:8px">${A.fileIco('pdf')}<div><div class="file-name">${esc(cert.filename)}</div><div class="file-meta">LHDN Stamp Certificate v${s.slots.stamp_certificate.versions.length} · ${A.fmt(cert.at)}</div>
-              <button class="btn sm" style="margin-top:6px" data-act="upload" data-sub="${s.id}" data-key="stamp_certificate">${icon('upload')}Replace</button></div></div>`
-            : `<div class="small muted">Upload the standalone certificate PDF. It is a separate document — it does not replace the signed agreement.</div>
-               ${err('stamp_certificate') ? `<div class="small" style="color:var(--red);margin-top:4px">${icon('alert')} Upload failed: ${esc(err('stamp_certificate'))}</div>` : ''}
+      s4 = step(4, afterSigning ? (cert ? 'done' : 'active') : 'locked', 'Get LHDN stamping, then upload the certificate',
+        !afterSigning ? '<div class="small">Unlocks after you submit the signed agreement.</div>'
+          : cert ? fileCard(cert.filename, `LHDN Stamp Certificate v${s.slots.stamp_certificate.versions.length} · ${A.fmt(cert.at)}`,
+              `<div class="small muted" style="margin-top:4px">Uploaded, not submitted yet.</div><button class="btn sm" style="margin-top:6px" data-act="upload" data-sub="${s.id}" data-key="stamp_certificate">${icon('upload')}Replace</button>`)
+            : `<div class="small muted">Stamping happens outside the system. Upload the certificate as a separate PDF. It does not replace the signed agreement.</div>
+               ${uploadFailed('stamp_certificate', 'Nothing was changed.')}
                <button class="btn sm primary" style="margin-top:6px" data-act="upload" data-sub="${s.id}" data-key="stamp_certificate">${icon('upload')}Upload stamp certificate</button>`);
     } else if (stamp === null) {
-      s4 = step(4, 'locked', 'LHDN stamping — waiting for Legal\'s decision', '<div class="small">Legal will record whether this Addendum needs stamping.</div>');
+      s4 = step(4, 'locked', 'LHDN stamping', '<div class="small">Legal is deciding whether stamping is needed.</div>');
     }
 
-    let btn;
+    const remaining = [];
+    let submitAct; let label; let after;
     if (stage === 'awaiting_partner') {
-      const label = stamp === true ? 'Submit signed agreement & continue to stamping' : 'Submit for final verification';
-      btn = `<button class="btn maroon lg" data-act="submit-signed" data-sub="${s.id}" ${signed && stamp !== null ? '' : 'aria-disabled="true"'}>${icon('arrow')}${label}</button>
-        <span class="small muted">${signed ? (stamp === null ? 'Legal must decide on stamping first.' : 'Check the file, then submit.') : 'Upload the signed PDF first.'}</span>`;
+      if (!signed) remaining.push('signed PDF');
+      if (stamp === null) remaining.push('Legal\'s stamping decision');
+      submitAct = 'submit-signed';
+      label = stamp === false ? 'Submit for final verification' : 'Submit signed agreement';
+      after = stamp === true ? 'Next: LHDN stamping.' : stamp === false ? 'Next: Legal verifies your documents.' : 'Next step follows Legal\'s stamping decision.';
     } else {
-      btn = `<button class="btn maroon lg" data-act="submit-certificate" data-sub="${s.id}" ${cert ? '' : 'aria-disabled="true"'}>${icon('arrow')}Submit for final verification</button>
-        <span class="small muted">${cert ? 'Legal will verify the signed agreement and certificate.' : 'Upload the stamp certificate first.'}</span>`;
+      if (!cert) remaining.push('stamp certificate');
+      submitAct = 'submit-certificate';
+      label = 'Submit for final verification';
+      after = 'Next: Legal verifies your documents.';
     }
+    const ready = remaining.length === 0;
+    const btn = `<button class="btn maroon lg" data-act="${submitAct}" data-sub="${s.id}" aria-describedby="execution-status" ${ready ? '' : 'aria-disabled="true"'}>${icon('arrow')}${label}</button>
+      <div class="small" id="execution-status">${ready
+        ? `<span style="color:var(--green)">${icon('check')} Ready to submit.</span>`
+        : `<span style="color:var(--amber)">${icon('alert')} Still needed: ${esc(remaining.join(', '))}.</span>`}
+        <div class="muted">Uploading does not submit. ${after}</div></div>`;
     return `<div class="card next-card requester"><div class="card-pad">
-      <div class="kicker">Next step · Your action needed</div>
       <h2>${stage === 'awaiting_partner' ? 'Get the partner\'s signature' : 'Complete LHDN stamping'}</h2>
-      <p class="muted" style="margin-top:6px">${stage === 'awaiting_partner' ? `UniKL has signed. ${stamp === true ? `This ${esc(s.type)} also needs LHDN stamping after the partner signs.` : stamp === false ? 'No LHDN stamping is needed for this agreement.' : ''}` : 'The partner has signed. Stamp the agreement with LHDN and upload the certificate.'}</p>
-      <div style="margin-top:14px">${s1}${s2}${s3}${s4}</div>
+      ${stage === 'awaiting_partner' && stamp === false ? '<p class="muted" style="margin-top:6px">No LHDN stamping needed.</p>' : ''}
+      <ol style="list-style:none;margin:14px 0 0;padding:0">${s1}${s2}${s3}${s4}</ol>
       <div class="row-wrap" style="margin-top:14px">${btn}</div></div></div>`;
   }
 
