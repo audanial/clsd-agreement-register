@@ -11,6 +11,7 @@
     uploadErrors: {},
     composer: {},
     noteComposer: {},
+    noteError: {},
     responseDraft: {},
     myFilter: { tab: 'all', q: '' },
     queueFilter: { tab: 'legal', q: '', status: '', category: '', campus: '', since: '' },

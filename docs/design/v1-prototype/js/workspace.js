@@ -547,14 +547,18 @@
   function notesTab(s, u) {
     if (!A.isLegal(u)) return '';
     const draft = UI.noteComposer[s.id] || '';
+    const error = (UI.noteError || {})[s.id];
     return `<div class="card">
-      <div class="notes-banner">${icon('shield')}<div><strong>Internal Legal Notes — Legal and Admin only.</strong><div class="small" style="opacity:.9">Never shown to the requester: not in pages, messages, activity, notifications, downloads or counts. Notes never change the submission status.</div></div></div>
+      <div class="notes-banner">${icon('shield')}<div><h3 style="color:#fff">Internal Legal Notes</h3><div class="small" style="opacity:.92">Legal and Admin only. Never shown to the requester.</div></div></div>
       <div class="card-body stack">
-        <label class="field"><span class="label">New internal note</span><textarea class="textarea" data-bind="noteComposer.${s.id}" placeholder="Visible to Legal and Admin only">${esc(draft)}</textarea></label>
-        <div class="row"><button class="btn maroon" data-act="add-note" data-sub="${s.id}">${icon('shield')}Add internal note</button><span class="xsmall muted">Append-only. To correct a note, add a new one.</span></div>
+        <div class="field"><label class="label" for="note-text">New note</label>
+          <textarea class="textarea" id="note-text" data-bind="noteComposer.${s.id}" placeholder="Write a note for Legal" ${error ? 'aria-invalid="true" aria-describedby="note-error note-help"' : 'aria-describedby="note-help"'}>${esc(draft)}</textarea>
+          ${error ? `<div class="small" id="note-error" role="alert" style="color:var(--red);margin-top:4px">${icon('alert')} ${esc(error)}</div>` : ''}</div>
+        <div class="row-wrap"><button class="btn maroon" style="white-space:nowrap" data-act="add-note" data-sub="${s.id}">${icon('shield')}Add internal note</button>
+          <span class="xsmall muted" id="note-help" style="flex:1 1 240px">Notes can't be edited or deleted. Add a follow-up note to make a correction. The requester isn't notified and the status doesn't change.</span></div>
         <div class="hr"></div>
-        ${s.notes.length ? s.notes.slice().reverse().map((n) => `<div class="note"><div class="msg-head">${A.avatar(n.by, true)}<span class="who">${esc(A.personName(n.by))}</span><span class="when">${A.fmt(n.at)}</span></div><div class="note-text">${esc(n.text)}</div></div>`).join('')
-          : '<p class="muted small">No internal notes yet.</p>'}
+        ${s.notes.length ? `<h3 class="small muted" style="font-weight:600">${s.notes.length} note${s.notes.length === 1 ? '' : 's'} · newest first</h3>${s.notes.slice().reverse().map((n) => `<div class="note"><div class="msg-head">${A.avatar(n.by, true)}<span class="who">${esc(A.personName(n.by))}</span><span class="when">${A.fmt(n.at)}</span></div><div class="note-text">${esc(n.text)}</div></div>`).join('')}`
+          : '<p class="muted small">No internal notes.</p>'}
       </div></div>`;
   }
 
