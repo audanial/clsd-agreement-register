@@ -249,6 +249,8 @@ The digital final package is sufficient for Fully Executed. Physical printing, c
 
 Fully Executed does not create an Agreement record automatically. Legal selects **Create Register Record** and receives a guided form pre-filled with known submission data. Legal reviews, corrects, and completes the official fields before confirming.
 
+Campus/department selectors display every institute and central unit as a bold organisational code followed by its full name, for example **ACE** — Centre for Advancement & Continuing Education. The guided LP6 form follows the production Register and Submission dropdown convention rather than the preserved prototype's inconsistent omission of some central-unit codes. `TBD` remains available only where historical Register ownership requires it; requester submission choices exclude it.
+
 Every newly created Agreement Register record requires a fixed expiry date. This applies both to the existing manual Legal/Admin creation flow and to the guided LP6 flow. Do not offer a **No fixed expiry** or indefinite checkbox. An expiry date that is already past remains valid historical information and does not block creation; the normal expiry and archive rules apply. Existing historical Agreement records whose `expiry_date` is null remain unchanged and continue to display as indefinite/until completion. The database column remains nullable for those legacy records, so this rule is enforced at new-record creation boundaries rather than through a destructive schema rewrite.
 
 The operation:

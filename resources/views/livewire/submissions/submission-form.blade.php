@@ -19,6 +19,8 @@ new class extends Component
 
     public string $purpose = '';
 
+    public array $dropdownOpen = [];
+
     /**
      * Requester-only form. Authorized on every request so a deactivated
      * requester, or a legal/admin session replaying a snapshot, cannot submit.
@@ -51,6 +53,28 @@ new class extends Component
         $this->redirectRoute('submissions.show', $submission, navigate: true);
     }
 
+    public function toggleDropdown(string $name): void
+    {
+        abort_unless($name === 'campus_id', 404);
+
+        $this->dropdownOpen[$name] = ! ($this->dropdownOpen[$name] ?? false);
+    }
+
+    public function closeDropdown(string $name): void
+    {
+        abort_unless($name === 'campus_id', 404);
+
+        $this->dropdownOpen[$name] = false;
+    }
+
+    public function selectDropdown(string $name, mixed $value): void
+    {
+        abort_unless($name === 'campus_id', 404);
+
+        $this->campus_id = $value === '' ? null : (int) $value;
+        $this->dropdownOpen[$name] = false;
+    }
+
     /**
      * Only active, non-TBD campuses — mirroring the trusted boundary's
      * exists + is_active + code <> 'TBD' constraint, since the dropdown is a
@@ -63,6 +87,15 @@ new class extends Component
             ->where('code', '!=', 'TBD')
             ->orderBy('sort_order')
             ->get();
+    }
+
+    #[Computed]
+    public function campusOptions(): array
+    {
+        return $this->campuses->map(fn (Campus $campus) => [
+            'value' => $campus->id,
+            'label' => '<strong class="font-bold">'.e($campus->code).'</strong> — '.e($campus->name),
+        ])->all();
     }
 };
 ?>
@@ -84,12 +117,13 @@ new class extends Component
         <div class="grid gap-6 md:grid-cols-2">
             <div>
                 <label class="block text-sm font-medium">Campus / Department</label>
-                <select wire:model="campus_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                    <option value="">Select campus / department</option>
-                    @foreach ($this->campuses as $campus)
-                        <option value="{{ $campus->id }}">{{ $campus->code }} — {{ $campus->name }}</option>
-                    @endforeach
-                </select>
+                <x-dropdown-select
+                    name="campus_id"
+                    placeholder="Select campus / department"
+                    :options="$this->campusOptions"
+                    :value="$campus_id"
+                    :is-open="$dropdownOpen['campus_id'] ?? false"
+                />
                 @error('campus_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 

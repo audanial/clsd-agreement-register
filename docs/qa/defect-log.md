@@ -545,3 +545,32 @@ This is not an arbitrary-record access vulnerability: exploitation requires a le
 
 **Verification**
 `AgreementShowTest::test_a_stale_snapshot_cannot_render_an_agreement_after_it_becomes_pending` covers both affected roles (Requester and Viewer) over a real mounted component, a direct `DB::table` status change, and a `$refresh` update expecting `assertNotFound()`. It passed in the authorised full-suite run on 18 Sep 2026 (343 tests, 1,138 assertions). Pint also passed.
+
+---
+
+## DEF-015 — Campus identity was rendered inconsistently across Register and Submission screens
+
+| | |
+|---|---|
+| **Reported by** | Amir during campus-display consistency review |
+| **Date found** | 30 Sep 2026 |
+| **Component** | Register list/detail and campus filter; Submission list/detail and campus field |
+| **Severity** | Minor |
+| **Priority** | Medium |
+| **Status** | Closed — fixed and locally verified 30 Sep 2026 |
+
+**Description**
+The Register list showed only the campus code, its detail page did not emphasise the code, and the Register filter and New Submission form used native selects that could not reliably bold only the code. The Submission list/detail and manual Agreement form already used the desired **CODE — Full Name** convention, leaving one domain concept with several visual treatments.
+
+**Root cause**
+Campus formatting was duplicated across views. M9 protected the Register list and manual Agreement form, while the later LP1 portal screens introduced separate native-select markup. Native `<option>` elements cannot reliably render partial bold styling across browsers, and the earlier rule did not explicitly require all Register and Submission surfaces to share one presentation contract.
+
+**Fix**
+- Register and Submission list/detail screens now consistently show a bold code followed by the full name.
+- The Register campus filter and New Submission campus field reuse the existing Livewire-only custom dropdown.
+- Institute and central-unit codes receive identical formatting; requester submissions still exclude inactive rows and `TBD`.
+- Register selection resets pagination, supports **All** to clear the filter, and retains active `TBD` for historical ownership filtering.
+- Option labels escape database values before the shared component renders the controlled formatting markup.
+
+**Verification**
+TC-095 maps nine focused tests across `AgreementsIndexTest`, `AgreementShowTest`, `SubmissionFormTest`, `SubmissionsIndexTest`, and `SubmissionShowTest`. The affected six-file integration run passed locally on 30 Sep 2026 with 142 tests and 461 assertions before the two Portal characterisation tests were added. The final full suite then passed with 368 tests and 1,246 assertions; Pint and `git diff --check` also passed. Manual browser verification confirmed the dropdown presentation and the filter contract: **ACE** showed only the fictional ACE agreement, **CoRI** showed only the fictional CoRI agreement, and **All** restored both records.

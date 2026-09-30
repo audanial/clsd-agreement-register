@@ -55,6 +55,32 @@ class SubmissionFormTest extends TestCase
         );
     }
 
+    public function test_campus_dropdown_renders_the_code_in_bold_with_the_full_name(): void
+    {
+        $campus = $this->fictionalCampus();
+
+        $html = Livewire::test('submissions.submission-form')
+            ->set('campus_id', $campus->id)
+            ->html();
+
+        $this->assertStringContainsString(
+            '<strong class="font-bold">TEST</strong> — Fictional Test Campus',
+            $html
+        );
+    }
+
+    public function test_selecting_a_campus_through_the_custom_dropdown_sets_the_form_value(): void
+    {
+        $campus = $this->fictionalCampus();
+
+        Livewire::test('submissions.submission-form')
+            ->call('toggleDropdown', 'campus_id')
+            ->assertSet('dropdownOpen.campus_id', true)
+            ->call('selectDropdown', 'campus_id', (string) $campus->id)
+            ->assertSet('campus_id', $campus->id)
+            ->assertSet('dropdownOpen.campus_id', false);
+    }
+
     public function test_agreement_type_select_offers_exactly_the_seven_options_in_order(): void
     {
         $html = Livewire::test('submissions.submission-form')->html();

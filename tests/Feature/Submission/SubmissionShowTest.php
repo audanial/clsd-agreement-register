@@ -73,6 +73,21 @@ class SubmissionShowTest extends TestCase
             ->assertDontSee('Requested by');
     }
 
+    public function test_submission_detail_shows_the_bold_campus_code_and_full_name(): void
+    {
+        $owner = User::factory()->requester()->create();
+        $submission = $this->submissionFor($owner);
+
+        $this->actingAs(User::query()->findOrFail($owner->id));
+
+        $html = Livewire::test('submissions.submission-show', ['submission' => $submission])->html();
+
+        $this->assertStringContainsString(
+            '<strong class="font-bold">TEST</strong> — Fictional Test Campus',
+            $html
+        );
+    }
+
     public function test_legal_and_admin_detail_identifies_the_requester(): void
     {
         Carbon::setTestNow('2026-09-14 10:00:00');

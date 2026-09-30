@@ -3,6 +3,7 @@
 namespace Tests\Feature\Agreement;
 
 use App\Models\Agreement;
+use App\Models\Campus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -179,6 +180,25 @@ class AgreementShowTest extends TestCase
         $this->assertStringContainsString('12 Aug 2024', $response->content());
         $this->assertStringNotContainsString('Effective date', $response->content());
         $this->assertStringNotContainsString('Agreement date', $response->content());
+    }
+
+    public function test_register_detail_shows_the_bold_campus_code_and_full_name(): void
+    {
+        $campus = Campus::firstOrCreate(
+            ['code' => 'MFI'],
+            ['name' => 'Malaysia France Institute', 'is_institute' => true]
+        );
+
+        $agreement = Agreement::factory()->signed()->create(['campus_id' => $campus->id]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreement-show', ['agreement' => $agreement])->html();
+
+        $this->assertStringContainsString(
+            '<dd class="mt-1 text-sm"><strong class="font-bold">MFI</strong> — Malaysia France Institute</dd>',
+            $html
+        );
     }
 
     public function test_activity_feed_renders_newest_first(): void
