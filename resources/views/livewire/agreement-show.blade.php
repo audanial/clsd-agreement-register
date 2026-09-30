@@ -143,7 +143,7 @@ new class extends Component
 
             <div>
                 <dt class="text-sm font-medium text-gray-500">Campus / Department</dt>
-                <dd class="mt-1 text-sm">{{ $agreement->campus?->code }} — {{ $agreement->campus?->name }}</dd>
+                <dd class="mt-1 text-sm"><strong class="font-bold">{{ $agreement->campus?->code }}</strong> — {{ $agreement->campus?->name }}</dd>
             </div>
 
             <div>

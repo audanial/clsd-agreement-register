@@ -582,7 +582,7 @@ class AgreementsIndexTest extends TestCase
             ->assertDontSee('Active Agreement');
     }
 
-    public function test_campus_code_renders_bold_in_the_register_list(): void
+    public function test_register_list_shows_the_bold_campus_code_and_full_name(): void
     {
         $campus = Campus::firstOrCreate(['code' => 'MFI'], ['name' => 'Malaysia France Institute', 'is_institute' => true]);
 
@@ -595,8 +595,95 @@ class AgreementsIndexTest extends TestCase
 
         $html = Livewire::test('agreements-index')->html();
 
-        $this->assertStringContainsString('<td class="px-4 py-3 text-sm"><strong class="font-bold">MFI</strong></td>', $html);
-        $this->assertStringNotContainsString('<strong class="font-bold">MFI</strong> — Malaysia France Institute', $html);
+        $this->assertStringContainsString(
+            '<td class="px-4 py-3 text-sm"><strong class="font-bold">MFI</strong> — Malaysia France Institute</td>',
+            $html
+        );
+    }
+
+    public function test_campus_filter_dropdown_renders_the_code_in_bold_with_the_full_name(): void
+    {
+        $campus = Campus::create([
+            'code' => 'ACE',
+            'name' => 'Centre for Advancement & Continuing Education',
+            'is_institute' => false,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        $html = Livewire::test('agreements-index')
+            ->set('campus', (string) $campus->id)
+            ->html();
+
+        $this->assertStringContainsString(
+            '<strong class="font-bold">ACE</strong> — Centre for Advancement &amp; Continuing Education',
+            $html
+        );
+    }
+
+    public function test_selecting_a_campus_through_the_custom_filter_filters_rows_and_resets_pagination(): void
+    {
+        $selectedCampus = Campus::create([
+            'code' => 'ACE',
+            'name' => 'Centre for Advancement & Continuing Education',
+            'is_institute' => false,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $otherCampus = Campus::create([
+            'code' => 'CoRI',
+            'name' => 'Centre for Research and Innovation',
+            'is_institute' => false,
+            'is_active' => true,
+            'sort_order' => 2,
+        ]);
+
+        Agreement::factory()->signed()->create([
+            'title' => 'Selected Campus Agreement',
+            'campus_id' => $selectedCampus->id,
+        ]);
+        Agreement::factory()->signed()->create([
+            'title' => 'Other Campus Agreement',
+            'campus_id' => $otherCampus->id,
+        ]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreements-index')
+            ->set('paginators.page', 2)
+            ->call('toggleDropdown', 'campus')
+            ->call('selectDropdown', 'campus', (string) $selectedCampus->id)
+            ->assertSet('campus', (string) $selectedCampus->id)
+            ->assertSet('paginators.page', 1)
+            ->assertSet('dropdownOpen.campus', false)
+            ->assertSee('Selected Campus Agreement')
+            ->assertDontSee('Other Campus Agreement');
+    }
+
+    public function test_selecting_all_through_the_custom_campus_filter_clears_the_filter(): void
+    {
+        $campus = Campus::create([
+            'code' => 'ACE',
+            'name' => 'Centre for Advancement & Continuing Education',
+            'is_institute' => false,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        Agreement::factory()->signed()->create([
+            'title' => 'Visible After Clearing Campus',
+            'campus_id' => $campus->id,
+        ]);
+
+        $this->actingAs(User::factory()->legal()->create());
+
+        Livewire::test('agreements-index', ['campus' => '99999'])
+            ->assertDontSee('Visible After Clearing Campus')
+            ->call('selectDropdown', 'campus', '')
+            ->assertSet('campus', '')
+            ->assertSee('Visible After Clearing Campus');
     }
 
     public function test_campus_department_header_and_filter_label_are_renamed(): void

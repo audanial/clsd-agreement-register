@@ -34,11 +34,36 @@ new class extends Component
     #[Url]
     public bool $showArchived = false;
 
+    public array $dropdownOpen = [];
+
     public function updating($name): void
     {
         if (in_array($name, ['search', 'campus', 'type', 'documentStatus', 'projectStatus', 'year', 'showArchived'], true)) {
             $this->resetPage();
         }
+    }
+
+    public function toggleDropdown(string $name): void
+    {
+        abort_unless($name === 'campus', 404);
+
+        $this->dropdownOpen[$name] = ! ($this->dropdownOpen[$name] ?? false);
+    }
+
+    public function closeDropdown(string $name): void
+    {
+        abort_unless($name === 'campus', 404);
+
+        $this->dropdownOpen[$name] = false;
+    }
+
+    public function selectDropdown(string $name, mixed $value): void
+    {
+        abort_unless($name === 'campus', 404);
+
+        $this->campus = (string) $value;
+        $this->dropdownOpen[$name] = false;
+        $this->resetPage();
     }
 
     #[Computed]
@@ -68,6 +93,18 @@ new class extends Component
     public function campuses()
     {
         return Campus::active()->orderBy('sort_order')->get();
+    }
+
+    #[Computed]
+    public function campusOptions(): array
+    {
+        return $this->campuses
+            ->map(fn (Campus $campus) => [
+                'value' => $campus->id,
+                'label' => '<strong class="font-bold">'.e($campus->code).'</strong> — '.e($campus->name),
+            ])
+            ->prepend(['value' => '', 'label' => 'All'])
+            ->all();
     }
 
     #[Computed]
@@ -142,12 +179,13 @@ new class extends Component
 
             <div>
                 <label class="block text-sm font-medium">Campus / Department</label>
-                <select wire:model.live="campus" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm">
-                    <option value="">All</option>
-                    @foreach ($this->campuses as $c)
-                        <option value="{{ $c->id }}">{{ $c->code }} — {{ $c->name }}</option>
-                    @endforeach
-                </select>
+                <x-dropdown-select
+                    name="campus"
+                    placeholder="All"
+                    :options="$this->campusOptions"
+                    :value="$campus"
+                    :is-open="$dropdownOpen['campus'] ?? false"
+                />
             </div>
 
             <div>
@@ -235,7 +273,7 @@ new class extends Component
                             </div>
                         </td>
                         <td class="px-4 py-3 text-sm">{{ $agreement->pic_name ?? '—' }}</td>
-                        <td class="px-4 py-3 text-sm"><strong class="font-bold">{{ $agreement->campus?->code }}</strong></td>
+                        <td class="px-4 py-3 text-sm"><strong class="font-bold">{{ $agreement->campus?->code }}</strong> — {{ $agreement->campus?->name }}</td>
                         <td class="px-4 py-3 text-sm">
                             <a href="{{ route('agreements.show', $agreement) }}" class="text-indigo-600 hover:text-indigo-900">View</a>
                         </td>

@@ -304,6 +304,45 @@ The target is signed out; a later correct-password login attempt gives the CLSD 
 
 ---
 
+### TC-095 — Campus identity is consistent across Register and Submission screens
+
+| | |
+|---|---|
+| **Feature area** | List, Detail, Submission Creation & Filtering |
+| **Business rule** | BR-37 / BR-39 — Campus and central-unit codes are emphasised and paired with the full name; formatted selectors use the shared custom dropdown |
+| **Priority** | Medium |
+| **Type** | Automated and manual visual QA |
+| **Preconditions** | Active institute and central-unit rows exist; agreements and submissions reference them |
+
+**Steps**
+1. Render the Agreement Register list and detail and the Submission list and detail.
+2. Open the New Submission campus dropdown and inspect an institute and a central unit.
+3. Open the Register campus filter, select a central unit, and inspect the filtered rows.
+4. Move the Register to a later page, select a campus, and inspect the current page.
+5. Select **All** in the Register campus filter.
+
+**Expected result**
+- Every read-only campus display uses **CODE — Full Name**, with only the code bold.
+- The New Submission and Register filter dropdowns apply the same formatting to institutes and central units such as `ACE`, `CoRI`, `CIL`, `MCI`, and `UIO`.
+- New Submission continues to exclude inactive rows and `TBD`; the Register filter retains active `TBD` for historical records.
+- Campus selection filters the Register, resets pagination to page 1, and closes the dropdown.
+- **All** clears the campus filter and restores unfiltered results.
+
+**Automated by**
+- `AgreementsIndexTest::test_register_list_shows_the_bold_campus_code_and_full_name`
+- `AgreementShowTest::test_register_detail_shows_the_bold_campus_code_and_full_name`
+- `SubmissionsIndexTest::test_submission_list_shows_the_bold_campus_code_and_full_name`
+- `SubmissionShowTest::test_submission_detail_shows_the_bold_campus_code_and_full_name`
+- `SubmissionFormTest::test_campus_dropdown_renders_the_code_in_bold_with_the_full_name`
+- `SubmissionFormTest::test_selecting_a_campus_through_the_custom_dropdown_sets_the_form_value`
+- `AgreementsIndexTest::test_campus_filter_dropdown_renders_the_code_in_bold_with_the_full_name`
+- `AgreementsIndexTest::test_selecting_a_campus_through_the_custom_filter_filters_rows_and_resets_pagination`
+- `AgreementsIndexTest::test_selecting_all_through_the_custom_campus_filter_clears_the_filter`
+
+**Status** Pass locally (automated and manual browser verification, 30 Sep 2026)
+
+---
+
 ## 2. Roles & Authorization
 
 ### TC-007 — Role middleware enforces admin-only routes

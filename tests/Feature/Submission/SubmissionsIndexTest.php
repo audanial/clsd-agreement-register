@@ -37,6 +37,21 @@ class SubmissionsIndexTest extends TestCase
             ->assertDontSee('Foreign Two');
     }
 
+    public function test_submission_list_shows_the_bold_campus_code_and_full_name(): void
+    {
+        $owner = User::factory()->requester()->create();
+        Submission::factory()->create(['created_by' => $owner->id]);
+
+        $this->actingAs(User::query()->findOrFail($owner->id));
+
+        $html = Livewire::test('submissions.submissions-index')->html();
+
+        $this->assertStringContainsString(
+            '<strong class="font-bold">TEST</strong> — Fictional Test Campus',
+            $html
+        );
+    }
+
     public function test_requester_pagination_counts_exclude_other_requesters_records(): void
     {
         $owner = User::factory()->requester()->create();
