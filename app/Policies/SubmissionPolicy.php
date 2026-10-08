@@ -39,6 +39,17 @@ class SubmissionPolicy
     }
 
     /**
+     * Determine whether the user can view and download the submission's
+     * document version history. The owning requester and Legal/Admin share
+     * the same history (V1 spec §5.2), so this mirrors view(), including the
+     * not-found denial for other requesters.
+     */
+    public function viewDocuments(User $user, Submission $submission): Response
+    {
+        return $this->view($user, $submission);
+    }
+
+    /**
      * Determine whether the user can create submissions.
      */
     public function create(User $user): bool
