@@ -86,6 +86,17 @@ Internal UniKL "CLSD Agreement Register" — tracks legal agreements (LOI/NDA/MO
   Register records require a fixed expiry date. The prototype's "No fixed expiry" checkbox must
   not be implemented. Never serve or import the prototype assets into the application.
 
+- **Post-demo amendments (2 Oct; LP2 design review completed 5 Oct 2026):** the binding V1 spec
+  now records Academic / Industry / Business / Commercial, the latter two sharing the six-document
+  checklist with **Memo (For CEO)**. LP2 is a one-session intake with **no saved drafts**;
+  Version 1 is **Submitted for Review**. Preserve existing LP1 submissions as locked historical
+  records. Development keeps private local storage; production requires verified private persistent
+  Object Storage with distinguishable storage identities. Viewer remains for wider read-only
+  Register reference access; requester access realignment remains LP6. **Proceed to Signing** is
+  LP4 copy. Closed-Register visibility is a separately scheduled correction. Outlook notifications,
+  document templates and a workflow guide remain unconfirmed. See `docs/architecture-plan-lp2.md`
+  for LP2 design and review status; design approval does not authorise deployment.
+
 - Optimize for convenience and usability by non-technical Legal staff over
   visual polish or impressive features. The system must remain operable
   by Legal (specifically Intan, the trusted successor as of 26 Aug 2026)

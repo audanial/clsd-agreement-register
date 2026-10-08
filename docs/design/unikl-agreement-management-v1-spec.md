@@ -1,6 +1,7 @@
 # UniKL Agreement Management System V1 Design
 
 > **Status:** Approved by Amir on 25 September 2026; workflow mockup approved by Intan and Siti on 28 September 2026 with the review amendments recorded below.
+> **Amendments:** Legal demo feedback confirmed by Amir on 2 October 2026; LP2 design sections 3–5 and historical-submission preservation confirmed on 5 October 2026. These amendments supersede conflicting preserved prototype wording. LP2 technical design is in `docs/architecture-plan-lp2.md`.
 > **Product name:** UniKL Agreement Management System
 > **Modules:** Submission Portal and Agreement Register
 > **Department:** Corporate Legal & Secretariat Department (CLSD)
@@ -24,10 +25,12 @@ The approved V1 direction changes that access model:
 
 - Legal and Admin receive full Agreement Register and Submission Portal access.
 - Requesting Staff see only submissions they created and the Agreement Register outcomes linked to those submissions.
-- Viewer is removed from the target V1 product because no confirmed user group or recurring Viewer workflow exists.
+- Viewer is retained for wider read-only Agreement Register reference access, including visible active, expired and terminated records. Viewer receives no Submission Portal access; the existing pending-agreement confidentiality boundary continues to apply.
 - External partners receive no account or system access.
 
 This reverses LP1 Amendment 2 for the target V1. It does not authorise an immediate access removal. Existing requester and Viewer access remains unchanged during LP2-LP5. LP6 reviews existing accounts and performs the access realignment only after the portal provides the replacement linked-record experience.
+
+Requesting Staff do not receive a catalogue of unrelated closed agreements, even with their contents hidden. Wider reference access belongs to Viewer, Legal and Admin according to their permissions. The 2 October decision to retain Viewer supersedes the original Viewer-removal direction.
 
 ## 3. Roles and capabilities
 
@@ -66,11 +69,15 @@ Legal can:
 
 Admin receives the same portal and Register capabilities as Legal and retains existing user-management responsibilities. Every action is attributed to the individual account.
 
+### 3.4 Viewer
+
+Viewer retains read-only access to the wider Agreement Register, with existing pending-agreement confidentiality and no Register mutations or Submission Portal access.
+
 ## 4. Submission classification and intake
 
 Every new submission requires these classifications:
 
-- **Engagement category:** Academic or Industry;
+- **Engagement category:** Academic, Industry, or Business / Commercial;
 - **Partner location:** Local or International; and
 - **Agreement type:** NDA, MOA, MOU, or ADDENDUM.
 
@@ -85,16 +92,20 @@ LOI is discontinued for new submissions. Historical LOI records remain visible a
 - Agreement; and
 - Requisition Form.
 
-**Industry submissions require:**
+**Industry and Business / Commercial submissions require:**
 
 - Agreement;
-- Memo;
+- Memo (For CEO);
 - Requisition Form;
 - Due Diligence Form;
 - Company Profile; and
 - SSM or equivalent Malaysian corporate information for a Local partner, or an equivalent business-registration document for an International partner.
 
-The checklist applies to every new submission, including an Addendum. Local or International changes the corporate-registration requirement for Industry submissions. The portal identifies missing items and prevents official submission until every mandatory intake slot has a current file.
+Business / Commercial identifies arrangements such as tenancy agreements and uses the same six-document checklist as Industry. The checklist applies to every new submission, including an Addendum. Local or International changes the corporate-registration requirement for both six-document categories. Use **Memo (For CEO)** consistently in checklist, readiness and document-history wording.
+
+The New Submission flow is one session, with **no saved drafts**. Form values and uploaded files remain temporary until **Submit to Legal**. Missing applicable fields or documents block official creation. Successful submission creates the official submission, applicable slots, Version 1 files labelled **Submitted for Review**, and audit together; failed creation leaves no partial official package. Reopening the page does not restore the unfinished form. Temporary replacement/removal creates no permanent version history.
+
+Existing LP1 submissions remain historical and locked. Preserve original fields, types and timestamps; do not invent classifications, backfill files, or reopen them into the new intake flow. New intake validation remains mandatory for every LP2 submission.
 
 ### 4.2 MOA subtype
 
@@ -124,6 +135,10 @@ Legal confirms or resolves the original-agreement link during review. An unresol
 - An Addendum requires a stamp certificate when Legal marks stamping as required.
 
 Files remain on private storage. The application never exposes a public storage URL or uses temporary public links as an authorisation substitute.
+
+Development retains private local file storage. Before LP2 accepts real production documents, configure and verify a private persistent Object Storage bucket. Record distinct storage identities so changing the active storage configuration cannot strand old files. Persistence protects files across application deployments; it does not replace a backup policy.
+
+Temporary uploads are private, expire after 24 hours when abandoned, and have no official submission/document rows. Each checklist row shows Missing, Uploading, Ready or Error and allows Replace/Remove before submission. Warn before clearing selections when classifications remove requirements; preserve shared files between Industry and Business / Commercial, and reset the corporate-registration selection when Local/International changes. Validate PDF/DOCX content and the 20 MB limit during selection and final submission. Rejected files leave other selections intact; failed submission supports safe retry without duplicate official requests. After success, intake files remain locked while Legal reviews.
 
 ### 5.2 One current file, preserved versions
 
@@ -224,7 +239,7 @@ The user-facing lifecycle is:
 | Fully Executed | Legal verified signatures and applicable stamping | Legal |
 | Registered | A confirmed Agreement Register record is linked | None |
 
-Review Completed is a recorded milestone distinct from Fully Executed. Legal obtains the Vice Chancellor's signature for an Academic agreement and the CEO's signature for an Industry agreement.
+Review Completed is a recorded milestone distinct from Fully Executed. Legal obtains the Vice Chancellor's signature for an Academic agreement and the CEO's signature for an Industry or Business / Commercial agreement. The Legal Review interface uses the concise instruction **Proceed to Signing**; it does not replace the distinct review-completion milestone or the signing rules.
 
 MOA always enters Awaiting LHDN Stamping under the confirmed Legal workflow. MOU and NDA skip it. For an Addendum, Legal explicitly records whether stamping is required. This avoids a blanket stamping assumption because LHDN states that a binding Addendum can itself be a dutiable instrument; see its [2025 stamp-duty question-and-answer compilation](https://www.hasil.gov.my/media/v35c0b0j/kompilasi-soalan-dan-jawapan-spk-2025-bagi-siri-1-14-oktober-2025-topik-transformasi-digital-sistem-taksir-sendiri-ckht-dan-duti-setem.pdf), question 161.
 
@@ -275,6 +290,12 @@ A submission can stop without becoming an Agreement because the requester withdr
 - Legal or Admin can reopen it with a mandatory reason, producing a new audit event.
 
 Fully Executed, Registered, and Not Proceeding records cannot be hard-deleted through the normal interface.
+
+### 12.1 Closed registered agreements as reference
+
+An officially registered agreement that later expires or is terminated remains searchable and readable, with its history preserved and clear Expired/Terminated badges and closed styling. The approved Register UX correction uses **All agreements** by default with **Active**, **Expired**, and **Terminated** filters. This correction requires its own implementation scheduling; it is not silently included in LP2 Documents. Project Completed remains separate from legal agreement closure.
+
+Not Proceeding submissions remain accessible in the Submission Portal and never become false Register records. Requesting Staff may reference their own submissions and linked agreements; Viewer, Legal and Admin retain their permitted wider Register reference access.
 
 ## 13. Architectural boundaries
 
@@ -335,7 +356,7 @@ Intan and Siti approved the workflow on 28 September 2026 with two amendments: p
 
 ### LP2 — Documents
 
-Dynamic checklists, secure upload and download, controlled document slots, immutable version history, and representative-file UAT.
+One-session intake with no saved drafts, three-category dynamic checklists, secure temporary uploads and authorised downloads, controlled document slots, immutable Version 1 history, historical LP1 preservation, and representative-file UAT. Private persistent production Object Storage is a release prerequisite.
 
 ### LP3 — Communication
 
@@ -351,7 +372,7 @@ UniKL and partner signing stages, MOA and conditional Addendum stamping, final v
 
 ### LP6 — Registration and release
 
-Guided Agreement Register creation, Addendum relationships, final requester and Viewer access realignment, complete audit coverage, UAT, release evidence, and Intan handover updates.
+Guided Agreement Register creation, Addendum relationships, final requester access realignment while retaining Viewer reference access, complete audit coverage, UAT, release evidence, and Intan handover updates.
 
 ## 17. Explicit V1 exclusions
 
@@ -368,6 +389,8 @@ V1 does not include:
 - external partner accounts;
 - general Legal-department case management; or
 - hard deletion of submitted records.
+
+Outlook notifications, document templates for first-time requesters, and an in-app end-to-end workflow guide were raised as Legal follow-up questions on 2 October. They remain unconfirmed and are not added to V1 by this amendment.
 
 ## 18. Verification requirements
 
@@ -391,3 +414,5 @@ Automated verification must cover:
 - continued inactive-account enforcement.
 
 Manual browser verification must cover complete Requesting Staff, Legal, and Admin journeys with fictional data. Intan and Siti completed the pre-LP2 mockup review on 28 September 2026. Intan completes workflow-focused UAT before V1 release.
+
+For LP2, automated checks cover all three categories, real PDF/DOCX validation and size boundaries, all-or-nothing creation, failure compensation and duplicate-safe retries, authorisation/isolation, locked submitted files and historical compatibility. Representative-file UAT uses fictional or sanitised documents, including valid files above the previous 12 MB limit and near 20 MB. LP2 release requires passing automated checks and no unresolved UAT issue blocking submission, downloading or confidentiality. Record actual production storage, upload/download and deployment verification in the milestone handoff; design approval is not verification evidence.
