@@ -139,4 +139,39 @@ class SubmissionPolicyTest extends TestCase
             }
         }
     }
+
+    public function test_view_documents_follows_view_rules_for_every_role_and_inactive_users(): void
+    {
+        $owner = User::factory()->requester()->create();
+        $submission = Submission::factory()->create(['created_by' => $owner->id]);
+        $submission = Submission::query()->findOrFail($submission->id);
+
+        $allowed = [
+            User::query()->findOrFail($owner->id),
+            User::query()->findOrFail(User::factory()->legal()->create()->id),
+            User::query()->findOrFail(User::factory()->admin()->create()->id),
+        ];
+
+        foreach ($allowed as $user) {
+            $this->assertTrue($user->can('viewDocuments', $submission), "{$user->role} should view documents.");
+        }
+
+        $otherRequester = User::query()->findOrFail(User::factory()->requester()->create()->id);
+        $response = Gate::forUser($otherRequester)->inspect('viewDocuments', $submission);
+        $this->assertFalse($response->allowed());
+        $this->assertSame(404, $response->status());
+
+        $denied = [
+            User::factory()->viewer()->create(),
+            User::factory()->admin()->inactive()->create(),
+            User::factory()->legal()->inactive()->create(),
+        ];
+
+        foreach ($denied as $user) {
+            $this->assertFalse(User::query()->findOrFail($user->id)->can('viewDocuments', $submission));
+        }
+
+        $owner->forceFill(['is_active' => false])->save();
+        $this->assertFalse(User::query()->findOrFail($owner->id)->can('viewDocuments', $submission));
+    }
 }

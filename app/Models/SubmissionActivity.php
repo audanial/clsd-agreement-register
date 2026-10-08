@@ -11,6 +11,8 @@ class SubmissionActivity extends Model
 {
     public const TYPE_SUBMISSION_CREATED = 'submission_created';
 
+    public const TYPE_DOCUMENT_UPLOADED = 'document_uploaded';
+
     protected function casts(): array
     {
         return [
